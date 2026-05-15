@@ -1,0 +1,3656 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Feather Flow</title>
+  <link rel="icon" type="image/svg+xml" href="./feather-icon.svg" />
+  <link rel="shortcut icon" href="./feather-icon.svg" />
+  <style>
+    :root {
+      --ui-font: "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      --bg:#0f1115; --panel:#151823; --muted:#9aa5b1; --text:#e7ecf3; --accent:#7aa2ff; --good:#3ddc97; --warn:#ffcf5a; --bad:#ff6b6b; --ink:#c6d0e2;
+      --border-color: #23283a; --input-bg: #101420; --input-border: #2a3050; --button-bg: #20263a; --button-border: #303654; --hover-bg: #1a1f30;
+      --canvas-bg: #0b0e16; --axis-stroke: #1f2a43; --tick-stroke: #2a3556; --gate-stroke: #d3def8; --gate-fill: rgba(75, 107, 255, 0.0);
+    }
+    body[data-theme="light"] {
+      --bg:#f5f5f7; --panel:#ffffff; --muted:#6e7480; --text:#1d1d1f; --accent:#0a84ff; --good:#198754; --warn:#ffc107; --bad:#dc3545; --ink:#30343a;
+      --border-color: #e1e4ea; --input-bg: #fbfbfd; --input-border: #d9dde5; --button-bg: #ffffff; --button-border: #d9dde6; --hover-bg: #f5f7fb;
+      --canvas-bg: #fdfdfd; --axis-stroke: #dee2e6; --tick-stroke: #ced4da; --gate-stroke: #343a40; --gate-fill: rgba(13, 110, 253, 0.0);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%; transition: background-color 0.3s, color 0.3s;}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);font-size:14px;font-weight:400;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    .app{display:grid;grid-template-columns:292px minmax(0, 1fr) 308px;grid-template-rows:auto 1fr;gap:12px;padding:14px;max-width:1580px;margin:0 auto}
+    
+    header{grid-column:1/4;display:flex;align-items:center;justify-content:space-between;background:color-mix(in srgb, var(--panel) 94%, transparent);border:1px solid color-mix(in srgb, var(--border-color) 86%, transparent);border-radius:16px;padding:10px 12px;position:sticky;top:12px;z-index:20;box-shadow:0 18px 48px rgba(12, 18, 28, 0.08);backdrop-filter:blur(18px)}
+    .brand{display:flex;align-items:center;gap:10px;min-width:max-content}
+    .brandIcon{width:24px;height:24px;display:block;color:var(--accent)}
+    body[data-theme="dark"] .brandIcon rect{fill:#0b0e16}
+    body[data-theme="dark"] .brandIcon .feather-group{stroke:#e7ecf3}
+    .brandIcon .feather-group{transform-origin:12px 12px;transform-box:fill-box}
+    .brandIcon:hover .feather-group{animation:brandIconSpin 1.2s linear infinite}
+    @keyframes brandIconSpin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+    header .btns{display:flex;gap:14px;flex-wrap:wrap; align-items: center;}
+    header .btns label{margin:0}
+    
+    button, .chip {
+      display: inline-flex; align-items: center; justify-content: center;
+      height: 34px; 
+      background:var(--button-bg);color:var(--text);border:1px solid var(--button-border);border-radius:8px;
+      padding:0 12px; font-weight:500; font-size: 13px;
+      cursor:pointer; transition: background-color 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s; line-height: 1;
+    }
+    button:hover, .chip:hover{border-color:color-mix(in srgb, var(--accent) 38%, var(--button-border));background:var(--hover-bg)}
+    button:active, .chip:active{transform:translateY(1px)}
+    button:disabled{opacity:0.45;cursor:not-allowed}
+    button:disabled:hover{border-color:var(--button-border);background:var(--button-bg)}
+    button.secondary{background:transparent}
+    button.borderless{background:transparent;border-color:transparent;padding-inline:6px}
+    button.borderless:hover{background:var(--hover-bg);border-color:transparent}
+    button.icon-only { padding: 0 8px; }
+    button:focus-visible, .chip:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid color-mix(in srgb, var(--accent) 65%, transparent); outline-offset:2px; }
+    
+    .col{background:var(--panel);border:1px solid var(--border-color);border-radius:14px;padding:12px; transition: background-color 0.3s, border-color 0.3s;box-shadow:0 12px 34px rgba(12, 18, 28, 0.045)}
+    h3{margin:4px 0 9px 0;font-size:15px;color:var(--text);font-weight:600}
+    label{display:block;font-size:11px;color:var(--muted);margin-top:9px;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.02em}
+    input[type="text"], select{width:100%;height:32px;background:var(--input-bg);color:var(--ink);border:1px solid var(--input-border);border-radius:8px;padding:5px 8px}
+    input[type="number"]{width:100%;height:32px;background:var(--input-bg);color:var(--ink);border:1px solid var(--input-border);border-radius:8px;padding:5px 8px}
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+    input[type="number"]{appearance:textfield;-moz-appearance:textfield}
+    
+    .files{display:flex;flex-direction:column;gap:1px}
+    .fileRow{display:flex;align-items:center;gap:7px;padding:2px 5px;border-radius:6px; cursor: grab;}
+    .fileRow:hover{background:var(--hover-bg)}
+    .fileRow.dragging { opacity: 0.5; }
+    .legendDot{width:12px;height:12px;border-radius:50%; cursor:pointer; border: 2px solid transparent;}
+    .legendDot:hover{border-color: var(--accent);}
+    
+    .ctrlRow{display:grid;grid-template-columns:1fr 1fr; gap:8px}
+    .rangeRow{display:grid;grid-template-columns:1fr 1fr 32px;gap:8px;align-items:end}
+    .magicAuto{width:32px;height:32px;padding:0;font-size:15px}
+    .plotFooter{display:none;align-items:center;justify-content:center;gap:8px;margin-top:8px}
+    .plotFooter label{margin:0}
+    .plotFooter select{width:auto;min-width:92px}
+    .swapRow{display: flex; align-items: flex-end; gap: 8px;}
+    .stack{display:flex;flex-direction:column;gap:8px}
+    .right .gateTools{display:inline-flex;align-items:center;gap:4px;padding:5px;background:color-mix(in srgb, var(--panel) 96%, var(--bg));border:1px solid var(--border-color);border-radius:15px;box-shadow:inset 0 1px 0 rgba(255,255,255,.78), 0 10px 22px rgba(12,18,28,.06)}
+    .gateToolButton{width:44px;height:38px;padding:0;border:0;border-radius:10px;background:transparent;color:var(--ink)}
+    .gateToolButton svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .gateToolButton:hover{border-color:transparent;background:var(--hover-bg);color:var(--text)}
+    .gateToolButton.is-active{background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 14%, #fff), color-mix(in srgb, var(--accent) 7%, #fff));color:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent), 0 8px 16px color-mix(in srgb, var(--accent) 15%, transparent)}
+    .gateToolButton.is-hidden{display:none}
+    .gateToolButton:disabled{opacity:.38}
+    body[data-theme="dark"] .right .gateTools{box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 22px rgba(0,0,0,.18)}
+    body[data-theme="dark"] .gateToolButton.is-active{background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, #151823), color-mix(in srgb, var(--accent) 12%, #151823));box-shadow:0 0 0 1px color-mix(in srgb, var(--accent) 36%, transparent), 0 8px 18px rgba(0,0,0,.22)}
+    .tree{margin-top:8px}
+    .tree .gateItem{padding:5px 6px;border-radius:7px;display:flex;align-items:center;gap:6px}
+    .gateItem:hover{background:var(--hover-bg)}
+    .gateBranch{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;color:var(--muted);font-size:12px;white-space:pre;line-height:1;min-width:16px}
+    .gateSampleDot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 2px var(--panel),0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);flex:0 0 auto}
+    .gateName{cursor: text;}
+    .indent{margin-left:18px}
+    .stats{font-size:13px;line-height:1.55}
+    .emptyState{font-size:12px;color:var(--muted);padding:8px;border:1px dashed var(--input-border);border-radius:8px}
+    
+    canvas{background:var(--canvas-bg);border:0;border-radius:0;display:block; transition: background-color 0.3s;max-width:100%;}
+    .plotWrap{position:relative;width:fit-content;max-width:100%}
+    .axisLabel{position:absolute;font-size:12px;color:var(--muted); padding: 2px 6px; border-radius: 4px;cursor:default}
+    .axisLabel.is-clickable{cursor:pointer}
+    .axisLabel.is-clickable:hover{color:var(--accent)}
+    .axisLabel.x{left:50%;transform:translateX(-50%);bottom:-2px}
+    .axisLabel.y{top:50%;transform:translateY(-50%) rotate(-90deg);left:-18px;transform-origin:center}
+    
+    .cursor-coords {
+        position: absolute; bottom: 12px; right: 12px;
+        background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--border-color);
+        padding: 4px 8px; border-radius: 6px;
+        font-size: 11px; color: var(--muted); pointer-events: none;
+        font-family: ui-monospace, monospace;
+        opacity: 0.8;
+    }
+
+    .hint{font-size:12px;color:var(--muted)}
+    .pill{padding:0;color:var(--muted);display:inline-block;min-width:5.3rem}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;background:var(--bg);border:1px solid var(--button-border);border-bottom-width:2px;border-radius:6px;padding:0 6px}
+    .sep{height:1px;background:var(--border-color);margin:9px 0}
+    .toolbarButton{
+      display:inline-flex;align-items:center;justify-content:center;line-height:1;
+      height:42px;min-width:116px;gap:9px;padding:0 18px;border-radius:11px;background:linear-gradient(180deg, #ffffff, #fbfcfe);
+      border:1px solid #dfe3eb;color:#1d1d1f;font-size:14px;font-weight:500;text-transform:none;letter-spacing:0;box-shadow:0 1px 1px rgba(12,18,28,.03), 0 8px 20px rgba(12,18,28,.04);
+    }
+    .toolbarButton svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+    .toolbarButton:hover{background:#fff;border-color:#cfd5df;box-shadow:0 1px 1px rgba(12,18,28,.04), 0 10px 24px rgba(12,18,28,.07)}
+    body[data-theme="dark"] .toolbarButton{background:linear-gradient(180deg, #202638, #1b2030);border-color:#303654;color:var(--text)}
+    body[data-theme="dark"] .toolbarButton:hover{background:#252b40;border-color:#3a4261}
+    .workspaceWrap, .exportWrap{position:relative}
+    .workspaceMenu, .exportMenu{position:absolute;right:0;top:calc(100% + 8px);display:none;min-width:190px;background:color-mix(in srgb, var(--panel) 98%, transparent);border:1px solid var(--border-color);border-radius:12px;box-shadow:0 18px 44px rgba(12,18,28,.16);padding:6px;z-index:30;backdrop-filter:blur(18px)}
+    .workspaceMenu.open, .exportMenu.open{display:grid;gap:3px}
+    .workspaceMenu button, .exportMenu button{justify-content:flex-start;width:100%;height:36px;background:transparent;border-color:transparent;border-radius:8px}
+    .workspaceMenu button:hover, .exportMenu button:hover{background:var(--hover-bg)}
+    .contextMenu{position:fixed;display:none;min-width:190px;background:color-mix(in srgb, var(--panel) 98%, transparent);border:1px solid var(--border-color);border-radius:12px;box-shadow:0 18px 44px rgba(12,18,28,.18);padding:6px;z-index:60;backdrop-filter:blur(18px)}
+    .contextMenu.open{display:grid;gap:3px}
+    .contextMenu button{justify-content:flex-start;width:100%;height:36px;background:transparent;border-color:transparent;border-radius:8px}
+    .contextMenu button:hover{background:var(--hover-bg)}
+    .axisPopover{position:absolute;display:none;min-width:240px;background:var(--panel);border:1px solid var(--border-color);border-radius:10px;box-shadow:0 14px 34px rgba(12,18,28,.16);padding:10px;z-index:40}
+    .axisPopover.open{display:block}
+    .axisPopover .popoverHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+    .axisPopover .popoverHead strong{font-size:13px}
+    .axisPopover .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .fileDelete{margin-left:5px;width:22px;height:22px;padding:0;border-color:transparent;background:transparent;color:var(--muted);font-size:12px;box-shadow:none}
+    .fileDelete:hover{border-color:transparent;background:transparent;color:var(--bad)}
+    .gateDelete{margin-left:auto;width:22px;height:22px;padding:0;border-color:transparent;background:transparent;color:var(--muted);font-size:12px;box-shadow:none}
+    .gateDelete:hover{border-color:transparent;background:transparent;color:var(--bad)}
+    
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; visibility: hidden; opacity: 0; transition: visibility 0s 0.3s, opacity 0.3s; }
+    .modal-overlay.visible { visibility: visible; opacity: 1; transition: visibility 0s, opacity 0.3s; }
+    .modal-content { background: var(--panel); padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); min-width: 300px; }
+    .modal-content h4 { margin-top: 0; }
+    .modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+    .stats-export-modal{width:min(760px,92vw)}
+    .exportOptionGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .optionList{max-height:260px;overflow:auto;border:1px solid var(--border-color);border-radius:8px;padding:6px;background:var(--input-bg)}
+    .optionList label{display:flex;align-items:center;gap:7px;margin:0;padding:5px 2px;color:var(--text);font-size:12px;font-weight:400;text-transform:none;letter-spacing:0}
+    .optionList input{margin:0}
+
+    /* Theme Toggle */
+    .theme-switch-wrapper { display: flex; align-items: center; gap: 8px; }
+    .theme-switch { display: inline-block; height: 20px; position: relative; width: 40px; }
+    .theme-switch input { display:none; }
+    .slider { background-color: #ccc; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 20px; }
+    .slider:before { background-color: #fff; bottom: 2px; content: ""; height: 16px; left: 2px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--accent); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    @media (max-width: 1240px) {
+      .app { grid-template-columns: 280px 1fr; }
+      .right { grid-column: 1 / 3; }
+      header { grid-column: 1 / 3; }
+    }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
+      header, .left, .mid, .right { grid-column: 1; }
+      header { position: static; flex-wrap: wrap; gap: 8px; }
+      header .btns { width: 100%; }
+      canvas { width: 100%; height: auto; }
+      .exportOptionGrid{grid-template-columns:1fr}
+    }
+  </style>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</head>
+<body data-theme="light">
+  <input type="color" id="colorPicker" style="visibility: hidden; position: absolute; top: -100px;">
+  <input type="file" id="loadWorkspaceInput" accept=".json" style="display:none">
+
+  <div class="modal-overlay" id="pdfExportModal">
+    <div class="modal-content">
+      <h4>PDF Export Options</h4>
+      <div class="ctrlRow">
+        <div><label>Width (cm)</label><input type="number" id="pdfWidth" value="10"></div>
+        <div><label>Height (cm)</label><input type="number" id="pdfHeight" value="10"></div>
+      </div>
+      <div><label>X Axis Label</label><input type="text" id="pdfXLabel"></div>
+      <div><label>Y Axis Label</label><input type="text" id="pdfYLabel"></div>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 15px;">
+        <input type="checkbox" id="pdfShowGates" checked> Show Gates
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <input type="checkbox" id="pdfShowSampleNames" checked> Show Sample Names
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <input type="checkbox" id="pdfShowPercent" checked> Show Percent
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <input type="checkbox" id="pdfAllEvents" checked> Save All Events (Slow)
+      </label>
+      <div class="modal-footer">
+        <button id="cancelPdfExport" class="secondary">Cancel</button>
+        <button id="confirmPdfExport">Export</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="pngExportModal">
+    <div class="modal-content">
+      <h4>PNG Export Options</h4>
+      <div><label>Scale Factor (Resolution)</label><input type="number" id="pngScale" value="2" min="1" max="10"></div>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <input type="checkbox" id="pngShowPercent" checked> Show Percent
+      </label>
+      <div class="hint">1 = Screen size (900x600). 2 = 2x High DPI (1800x1200), etc.</div>
+      <div class="modal-footer">
+        <button id="cancelPngExport" class="secondary">Cancel</button>
+        <button id="confirmPngExport">Export</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="statsExportModal">
+    <div class="modal-content stats-export-modal">
+      <h4>Statistics Export</h4>
+      <div class="exportOptionGrid">
+        <div>
+          <label>Gates</label>
+          <div id="statsGateOptions" class="optionList"></div>
+        </div>
+        <div>
+          <label>Parameters</label>
+          <div id="statsParamOptions" class="optionList"></div>
+        </div>
+        <div>
+          <label>Statistics</label>
+          <div id="statsMetricOptions" class="optionList"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelStatsExport" class="secondary">Cancel</button>
+        <button id="confirmStatsExport">Export</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gateApplyMenu" class="contextMenu" role="menu"></div>
+
+  <div class="app">
+    <header>
+      <div class="brand">
+        <svg class="brandIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+          <rect width="24" height="24" fill="#ffffff" />
+          <g class="feather-group" fill="none" stroke="#2c3e50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+            <line x1="16" y1="8" x2="2" y2="22" />
+            <line x1="17.5" y1="15" x2="9" y2="15" />
+          </g>
+        </svg>
+        <h3 style="margin:0; margin-right: 20px;">Feather Flow</h3>
+      </div>
+      <div class="btns">
+        <label class="toolbarButton" style="cursor:pointer">
+          <input id="fileInput" type="file" accept=".fcs,.csv" multiple style="display:none">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          <span>Add Files</span>
+        </label>
+        <div class="workspaceWrap">
+          <button id="workspaceMenuButton" class="toolbarButton" type="button" aria-expanded="false" aria-controls="workspaceMenu">
+            <span aria-hidden="true">💾</span>
+            <span>Workspace</span>
+          </button>
+          <div class="workspaceMenu" id="workspaceMenu">
+            <button id="saveWorkspace" type="button">💾 Save Workspace</button>
+            <button id="loadWorkspace" type="button">Load Workspace</button>
+          </div>
+        </div>
+        <div class="exportWrap">
+          <button id="exportMenuButton" class="toolbarButton" type="button" aria-expanded="false" aria-controls="exportMenu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5h14v-5"/></svg>
+            <span>Export</span>
+          </button>
+          <div class="exportMenu" id="exportMenu">
+            <button id="menuExportPDF" type="button">Image (PDF)</button>
+            <button id="menuExportPNG" type="button">Image (PNG)</button>
+            <button id="menuExportStats" type="button">Statistics (CSV)</button>
+            <button id="menuExportCSV" type="button">Population (CSV)</button>
+          </div>
+        </div>
+        <div class="theme-switch-wrapper">
+          <label class="theme-switch" for="themeToggle">
+            <input type="checkbox" id="themeToggle" checked />
+            <div class="slider"></div>
+          </label>
+          <span class="hint">Light Mode</span>
+        </div>
+      </div>
+      <div class="hint" style="flex:1; text-align:right;">Shortcuts: <b>Z</b>oom, <b>R</b>ect, <b>E</b>llipse, <b>P</b>oly</div>
+    </header>
+
+    <section class="col left">
+      <h3>Files</h3>
+      <div id="fileList" class="files"></div>
+      <div id="filesEmptyState" class="emptyState">No files loaded yet. Use "Add Files" to import FCS/CSV data.</div>
+      <div class="sep"></div>
+      <h3>Data</h3>
+      
+      <div class="swapRow">
+        <div style="flex:1;">
+          <label>X param</label>
+          <select id="xParam"></select>
+        </div>
+        <button id="swapAxes" class="borderless icon-only" title="Swap Axes" style="margin-bottom: 2px;">⇄</button>
+        <div style="flex:1;">
+          <label>Y param</label>
+          <select id="yParam"></select>
+        </div>
+      </div>
+
+      <label>Plot type</label>
+      <select id="plotType">
+        <option value="scatter">Scatter (Overlay)</option>
+        <option value="scatter-grid">Scatter (Grid)</option>
+        <option value="hist">Histogram (Overlay)</option>
+        <option value="hist-offset">Histogram (Offset)</option>
+      </select>
+      <label>Population</label>
+      <select id="population"></select>
+
+      <div class="sep"></div>
+      <h3>Axes</h3>
+      <div class="ctrlRow">
+        <div>
+          <label>X scale</label>
+          <select id="xScale"><option>linear</option><option>log</option></select>
+        </div>
+        <div>
+          <label>Y scale</label>
+          <select id="yScale"><option>linear</option><option>log</option></select>
+        </div>
+      </div>
+      <div class="rangeRow">
+        <div>
+          <label>X min</label><input id="xMin" type="number" step="any" />
+        </div>
+        <div>
+          <label>X max</label><input id="xMax" type="number" step="any" />
+        </div>
+        <button id="autoX" class="borderless icon-only magicAuto" title="Auto X range" aria-label="Auto X range">🪄</button>
+      </div>
+      <div class="rangeRow">
+        <div>
+          <label>Y min</label><input id="yMin" type="number" step="any" />
+        </div>
+        <div>
+          <label>Y max</label><input id="yMax" type="number" step="any" />
+        </div>
+        <button id="autoY" class="borderless icon-only magicAuto" title="Auto Y range" aria-label="Auto Y range">🪄</button>
+      </div>
+      <button id="resetView" class="borderless">Reset view</button>
+    </section>
+
+    <section class="col mid">
+      <div class="plotWrap">
+        <canvas id="plot" width="900" height="600"></canvas>
+        <div class="axisLabel x is-clickable" id="xlabel" title="Edit X axis"></div>
+        <div class="axisLabel y is-clickable" id="ylabel" title="Edit Y axis"></div>
+        <div id="cursorCoords" class="cursor-coords" style="display:none;"></div>
+      </div>
+      <div id="gridColsWrap" class="plotFooter">
+        <label for="gridCols">Grid columns</label>
+        <select id="gridCols">
+          <option value="auto">Auto</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="col right">
+      <h3>Stats</h3>
+      <div class="stats" id="statsBox"></div>
+      <div class="sep"></div>
+      <h3>Gates</h3>
+      <div class="gateTools">
+        <button class="gateToolButton" data-tool="select" title="Select (S)" aria-label="Select">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l12 8-6 1.5 4 6-2.5 1.5-4-6-3.5 4z"/></svg>
+        </button>
+        <button class="gateToolButton" data-tool="rect" title="Rectangle (R)" aria-label="Rectangle gate">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="1.5" stroke-dasharray="4 3"/></svg>
+        </button>
+        <button class="gateToolButton" data-tool="ellipse" title="Ellipse (E)" aria-label="Ellipse gate">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="7.5" ry="6.2" stroke-dasharray="4 3"/></svg>
+        </button>
+        <button class="gateToolButton" data-tool="poly" title="Polygon (P)" aria-label="Polygon gate">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5 19 9.7 16.2 18h-8.4L5 9.7z"/></svg>
+        </button>
+        <button class="gateToolButton" data-tool="segment" title="Histogram segment gate (G)" aria-label="Histogram segment gate">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12"/><path d="M18 6v12"/><path d="M6 12h12"/></svg>
+        </button>
+      </div>
+      <label style="margin-top:12px">Gate hierarchy</label>
+      <div id="gateTree" class="tree"></div>
+      <div id="gatesEmptyState" class="emptyState">No gates yet. Choose a gate tool and draw on the plot.</div>
+    </section>
+  </div>
+
+  <div class="axisPopover" id="axisPopover" role="dialog" aria-hidden="true">
+    <div class="popoverHead">
+      <strong id="axisPopoverTitle">Axis</strong>
+      <button id="axisPopoverClose" class="borderless icon-only" type="button" aria-label="Close">✕</button>
+    </div>
+    <label>Parameter</label>
+    <select id="axisPopoverParam"></select>
+    <div class="miniGrid">
+      <div>
+        <label>Scale</label>
+        <select id="axisPopoverScale"><option value="linear">Linear</option><option value="log">Exponential</option></select>
+      </div>
+      <div></div>
+      <div>
+        <label>Min</label>
+        <input id="axisPopoverMin" type="number" step="any" />
+      </div>
+      <div>
+        <label>Max</label>
+        <input id="axisPopoverMax" type="number" step="any" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="axisPopoverAuto" class="secondary" type="button">Auto</button>
+      <button id="axisPopoverApply" type="button">Apply</button>
+    </div>
+  </div>
+
+<script>
+// ---------------------------- Utility & State ----------------------------
+const TAU = Math.PI*2;
+const palette = [
+  '#7aa2ff','#3ddc97','#ff6b6b','#ffcf5a','#b994ff','#63e6e2','#ffa8a8','#94d82d','#4dabf7','#845ef7'
+];
+const byId = id=>document.getElementById(id);
+const ui = {
+  fileInput: byId('fileInput'), fileList: byId('fileList'),
+  xParam: byId('xParam'), yParam: byId('yParam'), plotType: byId('plotType'), gridCols: byId('gridCols'), gridColsWrap: byId('gridColsWrap'), population: byId('population'),
+  xScale: byId('xScale'), yScale: byId('yScale'), xMin: byId('xMin'), xMax: byId('xMax'), yMin: byId('yMin'), yMax: byId('yMax'),
+  autoX: byId('autoX'), autoY: byId('autoY'), swapAxes: byId('swapAxes'),
+  resetView: byId('resetView'),
+  plot: byId('plot'), xlabel: byId('xlabel'), ylabel: byId('ylabel'), cursorCoords: byId('cursorCoords'),
+  gateTree: byId('gateTree'), statsBox: byId('statsBox'),
+  filesEmptyState: byId('filesEmptyState'), gatesEmptyState: byId('gatesEmptyState'),
+  workspaceMenuButton: byId('workspaceMenuButton'), workspaceMenu: byId('workspaceMenu'),
+  exportMenuButton: byId('exportMenuButton'), exportMenu: byId('exportMenu'),
+  exportPNG: byId('menuExportPNG'), openPdfModal: byId('menuExportPDF'), exportCSV: byId('menuExportCSV'), exportStats: byId('menuExportStats'),
+  colorPicker: byId('colorPicker'),
+  themeToggle: byId('themeToggle'),
+  saveWorkspace: byId('saveWorkspace'), loadWorkspace: byId('loadWorkspace'), loadWorkspaceInput: byId('loadWorkspaceInput'),
+  pdfExportModal: byId('pdfExportModal'), confirmPdfExport: byId('confirmPdfExport'), cancelPdfExport: byId('cancelPdfExport'),
+  pdfWidth: byId('pdfWidth'), pdfHeight: byId('pdfHeight'), pdfShowGates: byId('pdfShowGates'), pdfShowSampleNames: byId('pdfShowSampleNames'), pdfShowPercent: byId('pdfShowPercent'), pdfAllEvents: byId('pdfAllEvents'),
+  pdfXLabel: byId('pdfXLabel'), pdfYLabel: byId('pdfYLabel'),
+  pngExportModal: byId('pngExportModal'), confirmPngExport: byId('confirmPngExport'), cancelPngExport: byId('cancelPngExport'), pngScale: byId('pngScale'), pngShowPercent: byId('pngShowPercent'),
+  statsExportModal: byId('statsExportModal'), statsGateOptions: byId('statsGateOptions'), statsParamOptions: byId('statsParamOptions'), statsMetricOptions: byId('statsMetricOptions'),
+  cancelStatsExport: byId('cancelStatsExport'), confirmStatsExport: byId('confirmStatsExport'),
+  gateApplyMenu: byId('gateApplyMenu'),
+  axisPopover: byId('axisPopover'), axisPopoverTitle: byId('axisPopoverTitle'), axisPopoverClose: byId('axisPopoverClose'),
+  axisPopoverParam: byId('axisPopoverParam'), axisPopoverScale: byId('axisPopoverScale'), axisPopoverMin: byId('axisPopoverMin'), axisPopoverMax: byId('axisPopoverMax'),
+  axisPopoverAuto: byId('axisPopoverAuto'), axisPopoverApply: byId('axisPopoverApply'),
+};
+const ctx = ui.plot.getContext('2d');
+const DEFAULT_PLOT_SIZE = { w: 900, h: 600 };
+let plotDisplaySize = { ...DEFAULT_PLOT_SIZE, dpr: 1 };
+
+let samples = []; 
+let visibleSampleIds = new Set();
+let gates = []; 
+let tool = 'select';
+let drawState = null; 
+let editingGate = { id: null, handle: null }; 
+let currentPopulationId = null; 
+let axis = {xParam:null, yParam:null, xScale:'linear', yScale:'linear', xMin:null, xMax:null, yMin:null, yMax:null};
+let hoverGateId = null;
+const paramSettings = {}; 
+let gatePercentCache = new Map();
+let gatePercentBySampleCache = new Map();
+let gatePercentCacheDirty = true;
+let labelDragGateId = null;
+let labelDragCellArea = null;
+let labelDragSampleId = null;
+let gateDragState = null;
+let activeAxisPopover = null;
+
+const idGen = (()=>{let i=1;return ()=>`G${i++}`})();
+function setTool(t){
+    const toolBtn = document.querySelector(`[data-tool="${t}"]`);
+    if (toolBtn && toolBtn.disabled) return;
+    tool=t; 
+    if(t!=='select') editingGate.id=null; 
+    document.querySelectorAll('[data-tool]').forEach(b=>{
+        const active = b.dataset.tool===t;
+        b.classList.toggle('is-active', active);
+        b.setAttribute('aria-pressed', String(active));
+    });
+    drawState=null; render();
+}
+function resetToSelect() {
+    drawState = null;
+    editingGate.handle = null;
+    editingGate.area = null;
+    gateDragState = null;
+    labelDragGateId = null;
+    labelDragCellArea = null;
+    labelDragSampleId = null;
+    setTool('select');
+}
+function safeHandler(label, fn) {
+    return (...args) => {
+        try {
+            fn(...args);
+        } catch (err) {
+            console.error(`${label} failed`, err);
+            alert(`${label} failed: ${err.message}`);
+        }
+    };
+}
+function markGatePercentDirty() { gatePercentCacheDirty = true; }
+function syncToolAvailability() {
+    const isHist = ui.plotType.value.startsWith('hist');
+    const is2d = ui.plotType.value.startsWith('scatter');
+    ui.autoY.disabled = isHist || !is2d;
+    ui.gridCols.disabled = ui.plotType.value !== 'scatter-grid';
+    ui.gridColsWrap.style.display = ui.plotType.value === 'scatter-grid' ? 'flex' : 'none';
+    const rectBtn = document.querySelector('[data-tool="rect"]');
+    const segmentBtn = document.querySelector('[data-tool="segment"]');
+    const ellipseBtn = document.querySelector('[data-tool="ellipse"]');
+    const polyBtn = document.querySelector('[data-tool="poly"]');
+    [rectBtn, segmentBtn, ellipseBtn, polyBtn].forEach(btn => {
+        if (!btn) return;
+        if (!btn.dataset.defaultTitle) btn.dataset.defaultTitle = btn.title || '';
+        if (btn === segmentBtn) {
+            btn.classList.toggle('is-hidden', !isHist);
+            btn.disabled = !isHist;
+            btn.title = isHist ? btn.dataset.defaultTitle : `${btn.dataset.defaultTitle} (Histogram mode only)`;
+        } else if (btn === rectBtn) {
+            btn.classList.toggle('is-hidden', isHist);
+            btn.disabled = isHist;
+            btn.title = isHist ? `${btn.dataset.defaultTitle} (Use Segment in histogram mode)` : btn.dataset.defaultTitle;
+        } else {
+            btn.classList.toggle('is-hidden', isHist);
+            btn.disabled = isHist;
+            btn.title = isHist ? `${btn.dataset.defaultTitle} (Unavailable in histogram mode)` : btn.dataset.defaultTitle;
+        }
+    });
+    if (isHist && (tool === 'ellipse' || tool === 'poly' || tool === 'rect')) setTool('segment');
+    if (!isHist && tool === 'segment') setTool('select');
+}
+
+// ---------------------------- FCS / CSV Loader ----------------------------
+ui.fileInput.addEventListener('change', async (e)=>{
+  const files = [...e.target.files];
+  for (let i=0;i<files.length;i++) {
+    const f = files[i];
+    try{
+      const ext = f.name.toLowerCase().split('.').pop();
+      const buffer = await f.arrayBuffer();
+      let sample;
+      if (ext==='csv') sample = await parseCSV(buffer, f.name);
+      else sample = await parseFCS(buffer, f.name);
+      
+      sample.name = sample.name.replace(/\.(fcs|csv)$/i, '');
+      sample.id = crypto.randomUUID();
+      sample.color = palette[samples.length % palette.length];
+      samples.push(sample);
+      visibleSampleIds.add(sample.id);
+    }catch(err){
+      alert(`Failed to load ${f.name}: ${err.message}`);
+      console.error(err);
+    }
+  }
+  refreshFileList();
+  refreshParamOptions();
+  markGatePercentDirty();
+  ui.xParam.dispatchEvent(new Event('change'));
+  ui.yParam.dispatchEvent(new Event('change'));
+});
+
+function refreshFileList(){
+  ui.fileList.innerHTML = '';
+  ui.filesEmptyState.style.display = samples.length ? 'none' : 'block';
+  samples.forEach(s=>{
+    const row = document.createElement('div'); 
+    row.className='fileRow';
+    row.draggable = true;
+    row.dataset.sampleId = s.id;
+
+    const chk = Object.assign(document.createElement('input'),{type:'checkbox', checked:visibleSampleIds.has(s.id)});
+    chk.addEventListener('change', ()=>{ if(chk.checked) visibleSampleIds.add(s.id); else visibleSampleIds.delete(s.id); markGatePercentDirty(); render(); });
+    
+    const sw = document.createElement('div'); sw.className='legendDot'; sw.style.background=s.color;
+    sw.title = `Click to change color for ${s.name}`;
+    sw.addEventListener('click', ()=>{
+      ui.colorPicker.oninput = (e) => { s.color = e.target.value; refreshFileList(); render(); };
+      ui.colorPicker.click();
+    });
+
+    const name = document.createElement('span');
+    name.textContent = s.name;
+    name.style.flex = '1';
+    name.contentEditable = true;
+    name.style.cursor = 'text';
+    
+    // Feature: Sample renaming on the fly without drag interference
+    name.addEventListener('mousedown', (e) => e.stopPropagation()); 
+    const updateName = () => {
+        const sample = samples.find(samp => samp.id === s.id);
+        if (sample && sample.name !== name.textContent.trim()) {
+            sample.name = name.textContent.trim();
+            render();
+        }
+    };
+    name.addEventListener('blur', updateName);
+    name.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.innerHTML = '✕'; removeBtn.className = 'borderless icon-only fileDelete';
+    removeBtn.title = "Remove file";
+    removeBtn.onclick = (e) => {
+        e.stopPropagation(); 
+        if(confirm(`Remove ${s.name}?`)){
+            samples = samples.filter(samp => samp.id !== s.id);
+            visibleSampleIds.delete(s.id);
+            markGatePercentDirty();
+            refreshFileList(); refreshParamOptions(); render();
+        }
+    };
+
+    const eventCount = document.createElement('span');
+    eventCount.className = 'hint';
+    eventCount.textContent = `(${s.n.toLocaleString()})`;
+
+    row.append(chk, sw, name, eventCount, removeBtn);
+    ui.fileList.append(row);
+  });
+}
+
+// Drag and Drop
+let draggedId = null;
+ui.fileList.addEventListener('dragstart', e => { draggedId = e.target.dataset.sampleId; e.target.classList.add('dragging'); });
+ui.fileList.addEventListener('dragend', e => { e.target.classList.remove('dragging'); });
+ui.fileList.addEventListener('dragover', e => {
+    e.preventDefault();
+    const afterElement = getDragAfterElement(ui.fileList, e.clientY);
+    const draggable = document.querySelector('.dragging');
+    if (afterElement == null) ui.fileList.appendChild(draggable);
+    else ui.fileList.insertBefore(draggable, afterElement);
+});
+ui.fileList.addEventListener('drop', e => {
+    e.preventDefault();
+    const fromIndex = samples.findIndex(s => s.id === draggedId);
+    const afterElement = getDragAfterElement(ui.fileList, e.clientY);
+    const toId = afterElement ? afterElement.dataset.sampleId : null;
+    const toIndex = toId ? samples.findIndex(s => s.id === toId) : samples.length;
+    const [movedSample] = samples.splice(fromIndex, 1);
+    samples.splice(toIndex > fromIndex ? toIndex -1 : toIndex, 0, movedSample);
+    refreshFileList();
+    render();
+});
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.fileRow:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function refreshParamOptions(){
+  const allParams = new Set();
+  samples.forEach(s => (s.params || []).forEach(p => allParams.add(p)));
+  const opts = Array.from(allParams);
+
+  function fillSel(sel, currentVal){ 
+    const prevVal = sel.value;
+    sel.innerHTML=''; 
+    opts.forEach(p=>{ const o=document.createElement('option'); o.value=p; o.textContent=p; sel.append(o); });
+    if (opts.includes(prevVal)) sel.value = prevVal;
+  }
+  fillSel(ui.xParam); 
+  fillSel(ui.yParam);
+
+  if (!axis.xParam && opts.length) {
+    const defaultX = opts.find(p => p.toUpperCase().includes('FSC-A')) || opts[0];
+    ui.xParam.value = defaultX;
+    axis.xParam = defaultX;
+  }
+  if (!axis.yParam && opts.length > 1) {
+    const defaultY = opts.find(p => p.toUpperCase().includes('SSC-A')) || opts[1];
+    ui.yParam.value = defaultY;
+    axis.yParam = defaultY;
+  }
+  updateAxisLabels();
+  refreshPopulationOptions();
+  fillAxisPopoverOptions();
+}
+
+function fillAxisPopoverOptions(){
+  if (!ui.axisPopoverParam) return;
+  const prevVal = ui.axisPopoverParam.value;
+  ui.axisPopoverParam.innerHTML = '';
+  Array.from(ui.xParam.options).forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt.value;
+    o.textContent = opt.textContent;
+    ui.axisPopoverParam.append(o);
+  });
+  if (prevVal && Array.from(ui.axisPopoverParam.options).some(o => o.value === prevVal)) ui.axisPopoverParam.value = prevVal;
+}
+
+function refreshPopulationOptions(){
+  ui.population.innerHTML='';
+  const all = document.createElement('option'); all.value = 'ALL'; all.textContent='All events'; ui.population.append(all);
+  gates.forEach(g=>{ const o=document.createElement('option'); const effectiveSampleId = gateEffectiveSampleId(g); o.value=g.id; o.textContent=effectiveSampleId ? `${g.name} (${sampleName(effectiveSampleId)})` : g.name; ui.population.append(o); });
+  ui.population.value = currentPopulationId || 'ALL';
+}
+
+// ---------------------------- Axis transforms ----------------------------
+function setAxisFromUI(){
+  axis.xParam = ui.xParam.value; axis.yParam = ui.yParam.value;
+  axis.xScale = ui.xScale.value; axis.yScale = ui.yScale.value;
+  const n = v=> (v===''||v===null||isNaN(+v))? null : +v;
+  axis.xMin = n(ui.xMin.value); axis.xMax = n(ui.xMax.value);
+  axis.yMin = n(ui.yMin.value); axis.yMax = n(ui.yMax.value);
+  updateAxisLabels();
+}
+
+function updateAxisLabels(){
+  const isGrid = ui.plotType.value === 'scatter-grid';
+  ui.xlabel.style.display = 'block';
+  ui.ylabel.style.display = 'block';
+
+  ui.xlabel.textContent = axis.xParam || '';
+    if (ui.plotType.value.startsWith('hist')) {
+      ui.ylabel.textContent = 'Percent of maximum';
+      ui.ylabel.classList.remove('is-clickable');
+      ui.ylabel.title = '';
+  } else if (isGrid) {
+    ui.ylabel.style.display = 'none';
+  } else {
+    ui.ylabel.textContent = axis.yParam || '';
+    ui.ylabel.classList.add('is-clickable');
+    ui.ylabel.title = 'Edit Y axis';
+  }
+}
+
+function getQuantile(arr, q) {
+  const sorted = arr.slice().sort((a, b) => a - b);
+  const pos = (sorted.length - 1) * q;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  if (sorted[base + 1] !== undefined) return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+  return sorted[base];
+}
+
+function axisDomain(param, scale, percentileLow = 0.01, percentileHigh = 0.99){
+  let allData = [];
+  samples.forEach(s => {
+    if (!visibleSampleIds.has(s.id)) return;
+    const i = s.params.indexOf(param);
+    if (i < 0) return;
+    allData.push(...s.data[i]);
+  });
+  if (allData.length === 0) return [0, 1];
+  
+  let d = allData.filter(Number.isFinite);
+  if (scale === 'log') d = d.filter(v => v > 0);
+  if (d.length === 0) return [0, 1];
+
+  const min = getQuantile(d, percentileLow);
+  const max = getQuantile(d, percentileHigh);
+  
+  let safeMin = min;
+  let safeMax = max;
+  if (safeMin >= safeMax) safeMax = safeMin + 1;
+  
+  if (scale === 'log') {
+      safeMin = Math.pow(10, Math.floor(Math.log10(Math.max(safeMin, 1e-9))));
+      safeMax = Math.pow(10, Math.ceil(Math.log10(Math.max(safeMax, safeMin * 10))));
+      if (!isFinite(safeMin) || safeMin <= 0) safeMin = 0.1;
+      if (!isFinite(safeMax) || safeMax <= safeMin) safeMax = safeMin * 10;
+  }
+  return [safeMin, safeMax];
+}
+
+function autoRangesFromData(){
+  const cachedX = paramSettings[axis.xParam];
+  if (cachedX) {
+    ui.xMin.value = cachedX.min;
+    ui.xMax.value = cachedX.max;
+    ui.xScale.value = cachedX.scale;
+  } else {
+    const pName = axis.xParam.toUpperCase();
+    const isLog = !pName.includes('FSC') && !pName.includes('SSC');
+    ui.xScale.value = isLog ? 'log' : 'linear';
+    const [xmin, xmax] = axisDomain(axis.xParam, ui.xScale.value);
+    ui.xMin.value = xmin; ui.xMax.value = xmax;
+  }
+  
+  const is2d = ui.plotType.value.startsWith('scatter');
+  if(is2d){
+    const cachedY = paramSettings[axis.yParam];
+    if (cachedY) {
+      ui.yMin.value = cachedY.min;
+      ui.yMax.value = cachedY.max;
+      ui.yScale.value = cachedY.scale;
+    } else {
+      const pName = axis.yParam.toUpperCase();
+      const isLog = !pName.includes('FSC') && !pName.includes('SSC');
+      ui.yScale.value = isLog ? 'log' : 'linear';
+      const [ymin, ymax] = axisDomain(axis.yParam, ui.yScale.value);
+      ui.yMin.value = ymin; ui.yMax.value = ymax;
+    }
+  }
+  setAxisFromUI();
+}
+
+function saveAxisToCache(param, isX) {
+    if(!param) return;
+    paramSettings[param] = {
+        min: isX ? ui.xMin.value : ui.yMin.value,
+        max: isX ? ui.xMax.value : ui.yMax.value,
+        scale: isX ? ui.xScale.value : ui.yScale.value
+    };
+}
+
+function makeScaler(min, max, scale, span){
+  const eps = 1e-9;
+  if (scale==='log'){
+    const f = v=> Math.log10(Math.max(v, eps));
+    const inv = x=> Math.pow(10, x);
+    const a = f(min<=0?eps:min), b=f(Math.max(max, eps*10));
+    const m = span/(b-a || 1);
+    return { fwd: v => (f(v)-a)*m, inv: x => inv(x/m + a) };
+  } else {
+    const a=min, b=max; const m=span/(b-a || 1);
+    return { fwd: v=> (v-a)*m, inv: x => x/m + a };
+  }
+}
+function transformAxisValue(v, scale) {
+  if (!isFinite(v)) return NaN;
+  if (scale === 'log') return v > 0 ? Math.log10(v) : NaN;
+  return v;
+}
+function inverseTransformAxisValue(v, scale) {
+  if (!isFinite(v)) return NaN;
+  return scale === 'log' ? Math.pow(10, v) : v;
+}
+function transformedAxisBounds(min, max, scale) {
+  return [transformAxisValue(min, scale), transformAxisValue(max, scale)];
+}
+function screenToTransformed(px, py, area) {
+  const [txMin, txMax] = transformedAxisBounds(axis.xMin, axis.xMax, axis.xScale);
+  const [tyMin, tyMax] = transformedAxisBounds(axis.yMin, axis.yMax, axis.yScale);
+  return {
+    x: txMin + ((px - area.x) / area.w) * (txMax - txMin),
+    y: tyMin + (((area.y + area.h) - py) / area.h) * (tyMax - tyMin)
+  };
+}
+function transformedToScreen(tx, ty, area) {
+  const [txMin, txMax] = transformedAxisBounds(axis.xMin, axis.xMax, axis.xScale);
+  const [tyMin, tyMax] = transformedAxisBounds(axis.yMin, axis.yMax, axis.yScale);
+  return {
+    x: area.x + ((tx - txMin) / (txMax - txMin || 1)) * area.w,
+    y: area.y + area.h - ((ty - tyMin) / (tyMax - tyMin || 1)) * area.h
+  };
+}
+function dataToScreenPoint(point, area) {
+  const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, area.w);
+  const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, area.h);
+  return { x: area.x + xs.fwd(point.x), y: area.y + area.h - ys.fwd(point.y) };
+}
+function screenToDataPoint(px, py, area) {
+  const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, area.w);
+  const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, area.h);
+  return { x: xs.inv(px - area.x), y: ys.inv((area.y + area.h) - py) };
+}
+function constrainSquareData(startData, curPx, curPy, area, useMax = false) {
+  const startPx = dataToScreenPoint(startData, area);
+  const dx = curPx - startPx.x;
+  const dy = curPy - startPx.y;
+  const size = (useMax ? Math.max : Math.min)(Math.abs(dx), Math.abs(dy));
+  const px = startPx.x + Math.sign(dx || 1) * size;
+  const py = startPx.y + Math.sign(dy || 1) * size;
+  return screenToDataPoint(px, py, area);
+}
+function constrainOrthogonalData(prevData, curPx, curPy, area) {
+  const prevPx = dataToScreenPoint(prevData, area);
+  const px = Math.abs(curPx - prevPx.x) >= Math.abs(curPy - prevPx.y) ? curPx : prevPx.x;
+  const py = Math.abs(curPx - prevPx.x) >= Math.abs(curPy - prevPx.y) ? prevPx.y : curPy;
+  return screenToDataPoint(px, py, area);
+}
+function rotatedEllipseFromBox(start, cur, forceCircle = false) {
+  const startT = gatePointToTransformed(start.x, start.y);
+  const curT = gatePointToTransformed(cur.x, cur.y);
+  const dx = curT.x - startT.x;
+  const dy = curT.y - startT.y;
+  const halfW = Math.abs(dx) / 2;
+  const halfH = Math.abs(dy) / 2;
+  const angle = Math.atan2(dy, dx);
+  const centerT = {x: (startT.x + curT.x) / 2, y: (startT.y + curT.y) / 2};
+  const center = inversePointForGate(centerT, {xScale: axis.xScale, yScale: axis.yScale});
+  if (forceCircle) {
+    const r = Math.min(halfW, halfH);
+    return { center, rx: r, ry: r, angle: 0 };
+  }
+  const cosA = Math.abs(Math.cos(angle));
+  const sinA = Math.abs(Math.sin(angle));
+  const ry = Math.min(halfW, halfH) * 0.32;
+  const rxFromW = cosA > 1e-9 ? Math.sqrt(Math.max(0, halfW * halfW - ry * ry * sinA * sinA)) / cosA : Infinity;
+  const rxFromH = sinA > 1e-9 ? Math.sqrt(Math.max(0, halfH * halfH - ry * ry * cosA * cosA)) / sinA : Infinity;
+  const rx = Math.min(rxFromW, rxFromH);
+  return { center, rx, ry, angle };
+}
+function gatePointToTransformed(xval, yval, g = null) {
+  const xScale = g?.xScale || axis.xScale;
+  const yScale = g?.yScale || axis.yScale;
+  return {
+    x: transformAxisValue(xval, xScale),
+    y: transformAxisValue(yval, yScale)
+  };
+}
+function getEllipseCenterT(g) {
+  return gatePointToTransformed(g.def.cx, g.def.cy, g);
+}
+function ellipseHandleTransformedPoints(g) {
+  const c = getEllipseCenterT(g);
+  const {rx, ry, angle = 0} = g.def;
+  if (!isFinite(c.x) || !isFinite(c.y)) return [];
+  const ca = Math.cos(angle), sa = Math.sin(angle);
+  const point = (ux, uy, role, sign = 1) => ({
+    x: c.x + ux * ca - uy * sa,
+    y: c.y + ux * sa + uy * ca,
+    type: 'ellipse',
+    role,
+    sign
+  });
+  const rotateOffset = Math.max(rx, ry) * 0.28;
+  return [
+    point(rx, 0, 'rx', 1),
+    point(-rx, 0, 'rx', -1),
+    point(0, ry, 'ry', 1),
+    point(0, -ry, 'ry', -1),
+    point(rx + rotateOffset, 0, 'rotate', 1)
+  ];
+}
+function drawEllipsePath(targetCtx, g, area) {
+  const handles = ellipseHandleTransformedPoints(g);
+  const c = getEllipseCenterT(g);
+  if (!handles.length || !isFinite(c.x) || !isFinite(c.y)) return false;
+  const {rx, ry, angle = 0} = g.def;
+  if (!(rx > 0) || !(ry > 0)) return false;
+  targetCtx.beginPath();
+  for (let i = 0; i <= 96; i++) {
+    const t = (i / 96) * TAU;
+    const tx = c.x + Math.cos(t) * rx * Math.cos(angle) - Math.sin(t) * ry * Math.sin(angle);
+    const ty = c.y + Math.cos(t) * rx * Math.sin(angle) + Math.sin(t) * ry * Math.cos(angle);
+    const p = transformedToScreen(tx, ty, area);
+    if (i === 0) targetCtx.moveTo(p.x, p.y);
+    else targetCtx.lineTo(p.x, p.y);
+  }
+  targetCtx.closePath();
+  return true;
+}
+
+// ---------------------------- Plotting ----------------------------
+const PAD = {l:60, r:16, t:16, b:36};
+
+function plotLogicalWidth(){ return plotDisplaySize.w || DEFAULT_PLOT_SIZE.w; }
+function plotLogicalHeight(){ return plotDisplaySize.h || DEFAULT_PLOT_SIZE.h; }
+function syncCanvasResolution() {
+  const wrap = ui.plot.parentElement;
+  const parent = wrap?.parentElement;
+  const parentStyle = parent ? getComputedStyle(parent) : null;
+  const parentPadding = parentStyle ? parseFloat(parentStyle.paddingLeft) + parseFloat(parentStyle.paddingRight) : 0;
+  const availableWidth = parent ? parent.clientWidth - parentPadding : (wrap?.clientWidth || DEFAULT_PLOT_SIZE.w);
+  const cssWidth = Math.max(320, Math.min(DEFAULT_PLOT_SIZE.w, Math.floor(availableWidth)));
+  const cssHeight = Math.round(cssWidth * DEFAULT_PLOT_SIZE.h / DEFAULT_PLOT_SIZE.w);
+  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  const pixelWidth = Math.round(cssWidth * dpr);
+  const pixelHeight = Math.round(cssHeight * dpr);
+  const changed = ui.plot.width !== pixelWidth || ui.plot.height !== pixelHeight || plotDisplaySize.w !== cssWidth || plotDisplaySize.h !== cssHeight || plotDisplaySize.dpr !== dpr;
+
+  if (changed) {
+    ui.plot.width = pixelWidth;
+    ui.plot.height = pixelHeight;
+    ui.plot.style.width = `${cssWidth}px`;
+    ui.plot.style.height = `${cssHeight}px`;
+    plotDisplaySize = { w: cssWidth, h: cssHeight, dpr };
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return changed;
+}
+
+// Support for high-res export via parameter injection
+function plotArea(w = plotLogicalWidth(), h = plotLogicalHeight()){ 
+    return {x:PAD.l, y:PAD.t, w:w-PAD.l-PAD.r, h:h-PAD.t-PAD.b}; 
+}
+
+function clear(){ ctx.clearRect(0,0,plotLogicalWidth(), plotLogicalHeight()); }
+function drawPlotBorder(targetCtx, area) {
+  targetCtx.save();
+  targetCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--axis-stroke');
+  targetCtx.lineWidth = 1;
+  targetCtx.strokeRect(area.x, area.y, area.w, area.h);
+  targetCtx.restore();
+}
+
+function drawAxes(targetCtx = ctx, area = plotArea(targetCtx.canvas.width, targetCtx.canvas.height), drawXLabels = true, drawYLabels = true){
+  const {x,y,w,h} = area;
+  drawPlotBorder(targetCtx, area);
+  targetCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--muted');
+  targetCtx.font='400 12px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+  targetCtx.textAlign='center';
+  const [xmin,xmax] = [axis.xMin, axis.xMax]; const [ymin,ymax]=[axis.yMin, axis.yMax];
+  const xs=makeScaler(xmin,xmax,axis.xScale,w);
+
+  if (drawXLabels) {
+    const xTicks = getAxisTicks(xmin, xmax, axis.xScale, 6);
+    xTicks.forEach(v => {
+      const tx = x + xs.fwd(v);
+      if (tx < x - 0.25 || tx > x + w + 0.25) return;
+      targetCtx.beginPath(); targetCtx.moveTo(tx, y+h); targetCtx.lineTo(tx, y+h+4);
+      targetCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--tick-stroke');
+      targetCtx.stroke();
+      targetCtx.fillText(formatCanvasTick(v, axis.xScale), tx, y+h+16);
+    });
+  }
+
+  const is2d = ui.plotType.value.startsWith('scatter');
+  if (is2d && drawYLabels) {
+    const ys=makeScaler(ymin,ymax,axis.yScale,h);
+    targetCtx.save();
+    targetCtx.textAlign='right';
+    const yTicks = getAxisTicks(ymin, ymax, axis.yScale, 6);
+    yTicks.forEach(v => {
+      const ty = y + h - ys.fwd(v);
+      if (ty < y - 0.25 || ty > y + h + 0.25) return;
+      targetCtx.beginPath(); targetCtx.moveTo(x-4, ty); targetCtx.lineTo(x, ty);
+      targetCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--tick-stroke');
+      targetCtx.stroke();
+      targetCtx.fillText(formatCanvasTick(v, axis.yScale), x-8, ty+4);
+    });
+    targetCtx.restore();
+  }
+}
+function tickLabel(v, scale){ if(scale==='log'){ const p=Math.pow(10,Math.round(Math.log10(v))); return formatNum(p);} return formatNum(v); }
+function formatNum(v){ if(!isFinite(v)) return ''; const a=Math.abs(v); if(a>=1e4||a<1e-2) return v.toExponential(1); if(a<1) return v.toFixed(2); if(a<10) return v.toFixed(1); return Math.round(v).toString(); }
+function niceStep(rawStep){
+  if (!isFinite(rawStep) || rawStep <= 0) return 1;
+  const exp = Math.floor(Math.log10(rawStep));
+  const frac = rawStep / Math.pow(10, exp);
+  let niceFrac = 1;
+  if (frac <= 1) niceFrac = 1;
+  else if (frac <= 2) niceFrac = 2;
+  else if (frac <= 5) niceFrac = 5;
+  else niceFrac = 10;
+  return niceFrac * Math.pow(10, exp);
+}
+function getLinearTicks(min, max, count = 6){
+  if (!isFinite(min) || !isFinite(max)) return [];
+  if (max < min) [min, max] = [max, min];
+  if (Math.abs(max - min) < 1e-12) return [min];
+  const step = niceStep((max - min) / Math.max(2, count - 1));
+  const eps = Math.max(1e-12, step * 1e-9);
+  const first = Math.ceil((min - eps) / step) * step;
+  const ticks = [];
+  for (let v = first; v <= max + eps; v += step) {
+    if (v >= min - eps && v <= max + eps) ticks.push(Number(v.toPrecision(12)));
+  }
+  if (!ticks.length) ticks.push(min, max);
+  return ticks;
+}
+function getLogTicks(min, max){
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return [];
+  if (max < min) [min, max] = [max, min];
+  const ticks = [];
+  const eps = 1e-12;
+  const startExp = Math.ceil(Math.log10(min));
+  const endExp = Math.floor(Math.log10(max));
+  for (let e = startExp; e <= endExp; e++){
+    const v = Math.pow(10, e);
+    if (v >= min - eps && v <= max + eps) ticks.push(v);
+  }
+  return ticks;
+}
+function getAxisTicks(min, max, scale, count = 6){
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return [];
+  const lo = Math.min(min, max);
+  const hi = Math.max(min, max);
+  const eps = Math.max(1e-12, (hi - lo) * 1e-9);
+  const sanitize = ticks => Array.from(new Set(ticks
+    .filter(v => Number.isFinite(v) && v >= lo - eps && v <= hi + eps)
+    .map(v => Number(v.toPrecision(12)))))
+    .sort((a,b) => a-b);
+  if (scale === 'log') {
+    const t = getLogTicks(min, max);
+    return sanitize(t.length ? t : getLinearTicks(min, max, count));
+  }
+  return sanitize(getLinearTicks(min, max, count));
+}
+function formatCanvasTick(v, scale){
+  if (!isFinite(v)) return '';
+  if (scale === 'log') {
+    const exp = Math.round(Math.log10(Math.max(v, 1e-12)));
+    return `10${toSuperscript(exp)}`;
+  }
+  const absV = Math.abs(v);
+  if (absV !== 0 && (absV >= 1e4 || absV < 1e-2)) {
+    const exp = Math.floor(Math.log10(absV));
+    const coeff = Number((v / Math.pow(10, exp)).toFixed(2));
+    return `${coeff}·10${toSuperscript(exp)}`;
+  }
+  return formatNum(v);
+}
+function formatExportTickLabel(v, scale) {
+  if (!isFinite(v)) return '';
+  if (scale === 'log') {
+    const exp = Math.round(Math.log10(Math.max(v, 1e-12)));
+    return `10^${exp}`;
+  }
+  const absV = Math.abs(v);
+  if (absV !== 0 && (absV >= 1e4 || absV < 1e-2)) {
+    const exp = Math.floor(Math.log10(absV));
+    const coeff = Number((v / Math.pow(10, exp)).toFixed(2));
+    return `${coeff}·10^${exp}`;
+  }
+  return formatNum(v);
+}
+function parseSuperscriptToken(text) {
+  const trimmed = String(text || '').trim();
+  let m = trimmed.match(/^10\^([+-]?\d+)$/);
+  if (m) return { base: '10', exp: m[1] };
+  m = trimmed.match(/^([+-]?\d+(?:\.\d+)?)\s*[×x·⋅]\s*10\^([+-]?\d+)$/);
+  if (m) return { base: `${m[1]}×10`, exp: m[2] };
+  m = trimmed.match(/^([+-]?\d+(?:\.\d+)?)[eE]([+-]?\d+)$/);
+  if (m) return { base: `${m[1]}×10`, exp: m[2] };
+  return null;
+}
+function drawPdfSuperscriptText(pdf, text, x, y, opts = {}) {
+  const { align = 'left' } = opts;
+  const parsed = parseSuperscriptToken(text);
+  if (!parsed) { pdf.text(String(text), x, y, { align }); return; }
+
+  const baseSize = pdf.getFontSize();
+  const expSize = Math.max(6, Math.round(baseSize * 0.72));
+  const rise = Math.max(2, Math.round(baseSize * 0.28));
+  const baseText = parsed.base;
+  const expText = parsed.exp.replace(/^\+/, '');
+  const expGap = pdf.getTextWidth(' ') * 0.38;
+
+  const baseWidth = pdf.getTextWidth(baseText);
+  pdf.setFontSize(expSize);
+  const expWidth = pdf.getTextWidth(expText);
+  pdf.setFontSize(baseSize);
+
+  const totalWidth = baseWidth + expGap + expWidth;
+  let startX = x;
+  if (align === 'center') startX = x - totalWidth / 2;
+  else if (align === 'right') startX = x - totalWidth;
+
+  pdf.text(baseText, startX, y);
+  pdf.setFontSize(expSize);
+  pdf.text(expText, startX + baseWidth + expGap, y - rise);
+  pdf.setFontSize(baseSize);
+}
+function wrapExportText(pdf, text, maxWidth) {
+  const clean = String(text || '').trim().replace(/\s+/g, ' ');
+  if (!clean) return [''];
+
+  const tokens = clean.split(/(\s+|\/|-|_)/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  for (const token of tokens) {
+    const candidate = line + token;
+    if (line && pdf.getTextWidth(candidate) > maxWidth) {
+      lines.push(line.trimEnd());
+      line = token.trimStart();
+    } else {
+      line = candidate;
+    }
+  }
+  if (line.trim()) lines.push(line.trimEnd());
+  return lines.length ? lines : [''];
+}
+function drawVerticalWrappedLabel(pdf, lines, x, centerY) {
+  const labelLines = (lines || []).map(s => String(s || '').trim()).filter(Boolean);
+  if (!labelLines.length) return;
+  const gap = 4;
+  const widths = labelLines.map(line => pdf.getTextWidth(line));
+  const totalHeight = widths.reduce((a, b) => a + b, 0) + gap * Math.max(0, labelLines.length - 1);
+
+  // With 90-degree rotation and left alignment, text extends upward from y.
+  // Start lower so the full block is vertically centered around centerY.
+  let yCursor = centerY + totalHeight / 2;
+  labelLines.forEach((line, i) => {
+    pdf.text(line, x, yCursor, { angle: 90, align: 'left', baseline: 'middle' });
+    yCursor -= widths[i] + gap;
+  });
+}
+function getAxisTitleTexts() {
+  const plotType = ui.plotType.value;
+  const xLabel = axis.xParam || '';
+  let yLabel = '';
+  if (plotType.startsWith('hist')) yLabel = 'Percent of maximum';
+  else if (plotType.startsWith('scatter')) yLabel = axis.yParam || '';
+  return { xLabel, yLabel };
+}
+function drawCanvasAxisTitles(targetCtx, width, height) {
+  const area = plotArea(width, height);
+  const { xLabel, yLabel } = getAxisTitleTexts();
+  const textColor = getComputedStyle(document.body).getPropertyValue('--muted');
+  targetCtx.save();
+  targetCtx.fillStyle = textColor;
+  targetCtx.font = '400 12px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+  targetCtx.textAlign = 'center';
+  targetCtx.textBaseline = 'middle';
+  targetCtx.fillText(xLabel, area.x + area.w / 2, area.y + area.h + 22);
+
+  if (yLabel) {
+    targetCtx.translate(Math.max(14, area.x - 24), area.y + area.h / 2);
+    targetCtx.rotate(-Math.PI / 2);
+    targetCtx.fillText(yLabel, 0, 0);
+  }
+  targetCtx.restore();
+}
+
+function render(targetCtx = ctx, isExport = false, exportOptions = {}){
+  if (!isExport) { 
+    setAxisFromUI();
+    syncCanvasResolution();
+    clear();
+  }
+  
+  // Logical Width/Height support for High-DPI
+  const w = isExport ? (exportOptions.logicalWidth || targetCtx.canvas.width) : plotLogicalWidth();
+  const h = isExport ? (exportOptions.logicalHeight || targetCtx.canvas.height) : plotLogicalHeight();
+  
+  // Note: draw functions need to know the logical area to scale correctly if we are doing High DPI via ctx.scale
+  const plotType = ui.plotType.value;
+  if (plotType === 'scatter') drawScatterPlot(targetCtx, isExport, exportOptions, w, h);
+  else if (plotType === 'scatter-grid') drawGridScatterPlot(targetCtx, isExport, exportOptions, w, h);
+  else if (plotType === 'hist') drawHistPlot(targetCtx, isExport, false, exportOptions, w, h);
+  else if (plotType === 'hist-offset') drawHistPlot(targetCtx, isExport, true, exportOptions, w, h);
+
+  if (isExport && exportOptions.includeAxisTitles !== false) {
+    drawCanvasAxisTitles(targetCtx, w, h);
+  }
+
+  if (!isExport) updateStats();
+}
+
+function drawScatterPlot(targetCtx, isExport, exportOptions, width, height){
+    const area = plotArea(width, height);
+    drawAxes(targetCtx, area);
+    const {x,y,w,h} = area;
+    const xs=makeScaler(axis.xMin,axis.xMax,axis.xScale,w);
+    const ys=makeScaler(axis.yMin,axis.yMax,axis.yScale,h);
+    const popFilter = makePopulationFilter(currentPopulationId);
+
+    visibleSamples().forEach(s=>{
+      const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam);
+      if (ix<0 || iy<0) return;
+      const ax=s.data[ix], ay=s.data[iy];
+      targetCtx.fillStyle = hexToRGBA(s.color, 0.65);
+      const N = ax.length; const stride = N>150000? Math.ceil(N/150000) : 1;
+      
+      targetCtx.beginPath();
+      if (isExport) {
+        for (let k=0;k<N;k+=stride){ const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; const px = x + xs.fwd(vx); const py = y + h - ys.fwd(vy); if(px<x||px>x+w||py<y||py>y+h) continue; targetCtx.moveTo(px, py); targetCtx.arc(px, py, 0.75, 0, TAU); }
+      } else {
+        for (let k=0;k<N;k+=stride){ const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; const px = x + xs.fwd(vx); const py = y + h - ys.fwd(vy); if(px<x||px>x+w||py<y||py>y+h) continue; targetCtx.rect(px-0.75,py-0.75,1.5,1.5); }
+      }
+      targetCtx.fill();
+    });
+    if (!isExport || (isExport && exportOptions.showGates)) drawGates(targetCtx, width, height, isExport, exportOptions);
+    drawPlotBorder(targetCtx, area);
+}
+function drawGatesInGridCell(targetCtx, cellArea, sample, isExport = false, exportOptions = {}) {
+    const {x, y, w, h} = cellArea;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const isHist = ui.plotType.value.startsWith('hist');
+    const showGates = !isExport || !!exportOptions.showGates;
+    const showPercent = !isExport || !!exportOptions.showPercent;
+
+    gates.forEach(g => {
+        if (!gateVisibleForCurrentAxes(g, sample.id)) return;
+        if (showGates) {
+            targetCtx.save();
+            const stroke = gateColor(g);
+            targetCtx.strokeStyle = stroke;
+            targetCtx.lineWidth = editingGate.id === g.id ? 2 : 1;
+            targetCtx.fillStyle = gateEffectiveSampleId(g) ? hexToRGBA(stroke, 0.08) : getComputedStyle(document.body).getPropertyValue('--gate-fill');
+            if (g.type==='rect'){
+                const {x0,y0,x1,y1} = g.def; const rx = x + xs.fwd(Math.min(x0,x1)); const ry = y + h - ys.fwd(Math.max(y0,y1)); const rw = Math.abs(xs.fwd(x1)-xs.fwd(x0)); const rh = Math.abs(ys.fwd(y1)-ys.fwd(y0));
+                targetCtx.beginPath(); targetCtx.rect(rx, ry, rw, rh); targetCtx.fill(); targetCtx.stroke();
+            } else if (g.type==='poly' && !isHist){
+                const pts=g.def.pts; if(pts.length>=2){ targetCtx.beginPath(); pts.forEach((p,i)=>{ const px=x+xs.fwd(p.x), py=y+h-ys.fwd(p.y); if(i===0) targetCtx.moveTo(px,py); else targetCtx.lineTo(px,py); }); targetCtx.closePath(); targetCtx.fill(); targetCtx.stroke(); }
+            } else if (g.type==='ellipse' && !isHist){
+                if (drawEllipsePath(targetCtx, g, cellArea)) { targetCtx.fill(); targetCtx.stroke(); }
+            }
+            targetCtx.restore();
+            if (editingGate.id === g.id) drawGateHandles(targetCtx, g, w, h, cellArea);
+        }
+
+        if (showPercent) {
+            const pos = ensureGateLabelPos(g);
+            const px = x + xs.fwd(pos.x);
+            const py = y + h - ys.fwd(pos.y);
+            if (!isFinite(px) || !isFinite(py)) return;
+            const text = gatePercentTextForSample(g, sample.id);
+            drawCanvasGateLabel(targetCtx, text, px, py, '400 10px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif');
+        }
+    });
+}
+
+function drawGridScatterPlot(targetCtx, isExport, exportOptions, width, height) {
+    const area = plotArea(width, height);
+    const {x,y,w,h} = area;
+    const popFilter = makePopulationFilter(currentPopulationId);
+    const visSamples = visibleSamples();
+    const nSamples = visSamples.length;
+    if (nSamples === 0) { drawAxes(targetCtx, area); return; }
+
+    const cols = gridColumnCount(nSamples);
+    const rows = Math.ceil(nSamples / cols);
+    const cellW = w / cols;
+    const cellH = h / rows;
+
+    visSamples.forEach((s, i) => {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        const cellX = x + col * cellW;
+        const cellY = y + row * cellH;
+        const cellArea = {x: cellX, y: cellY, w: cellW, h: cellH};
+        drawAxes(targetCtx, cellArea, row === rows - 1, col === 0);
+
+        const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, cellW);
+        const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, cellH);
+
+        const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam);
+        if (ix<0 || iy<0) return;
+        const ax=s.data[ix], ay=s.data[iy];
+        targetCtx.fillStyle = hexToRGBA(s.color, 0.65);
+        const N = ax.length; const stride = N>50000? Math.ceil(N/50000) : 1;
+
+        targetCtx.beginPath();
+        for (let k=0;k<N;k+=stride){ 
+            const vx=ax[k], vy=ay[k]; 
+            if(axis.xScale==='log' && vx<=0) continue; 
+            if(axis.yScale==='log' && vy<=0) continue; 
+            if(!popFilter(s,k)) continue; 
+            const px = cellX + xs.fwd(vx); 
+            const py = cellY + cellH - ys.fwd(vy); 
+            if(px<cellX||px>cellX+cellW||py<cellY||py>cellY+cellH) continue; 
+            targetCtx.rect(px-0.75,py-0.75,1.5,1.5); 
+        }
+        targetCtx.fill();
+        targetCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text');
+        targetCtx.textAlign = 'right';
+        targetCtx.font = '400 10px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+        targetCtx.fillText(s.name, cellX + cellW - 5, cellY + 12);
+        drawGatesInGridCell(targetCtx, cellArea, s, isExport, exportOptions);
+        drawPlotBorder(targetCtx, cellArea);
+    });
+}
+
+function addSmoothDensityCurveToPath(targetCtx, densityPoints, xForPoint, yForPoint) {
+    if (!densityPoints.length) return;
+    targetCtx.lineTo(xForPoint(densityPoints[0]), yForPoint(densityPoints[0]));
+    if (densityPoints.length === 1) return;
+    for (let i = 1; i < densityPoints.length - 1; i++) {
+        const x = xForPoint(densityPoints[i]);
+        const y = yForPoint(densityPoints[i]);
+        const nextX = xForPoint(densityPoints[i + 1]);
+        const nextY = yForPoint(densityPoints[i + 1]);
+        targetCtx.quadraticCurveTo(x, y, (x + nextX) / 2, (y + nextY) / 2);
+    }
+    const last = densityPoints[densityPoints.length - 1];
+    targetCtx.lineTo(xForPoint(last), yForPoint(last));
+}
+
+function drawHistPlot(targetCtx, isExport, isOffset, exportOptions, width, height){
+    const area = plotArea(width, height);
+    drawAxes(targetCtx, area, true, !isOffset); 
+    const {x,y,w,h} = area;
+    const xs=makeScaler(axis.xMin,axis.xMax,axis.xScale,w);
+    const popFilter = makePopulationFilter(currentPopulationId);
+    const visSamples = visibleSamples();
+    if (visSamples.length === 0) return;
+
+    if (isOffset) {
+        const nSamples = visSamples.length;
+        const sampleHeight = h / nSamples;
+
+        visSamples.forEach((s, sampleIndex) => {
+          const i = s.params.indexOf(axis.xParam); if(i<0) return;
+          let data = Array.from(s.data[i]).filter((_, k) => popFilter(s, k));
+          if (data.length === 0) return;
+          
+          const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, 200);
+          let maxDensity = 0;
+          for(const p of densityPoints) if(p.y > maxDensity) maxDensity = p.y;
+          if (maxDensity === 0) return;
+          
+          const baselineY = y + (sampleIndex + 1) * sampleHeight;
+          
+          targetCtx.fillStyle = hexToRGBA(s.color, 0.6);
+          targetCtx.strokeStyle = s.color;
+          targetCtx.lineWidth = 1.5;
+
+          targetCtx.beginPath();
+          targetCtx.moveTo(x + xs.fwd(densityPoints[0].x), baselineY);
+          addSmoothDensityCurveToPath(
+            targetCtx,
+            densityPoints,
+            p => x + xs.fwd(p.x),
+            p => baselineY - (p.y / maxDensity) * sampleHeight * 0.8
+          );
+          targetCtx.lineTo(x + xs.fwd(densityPoints[densityPoints.length - 1].x), baselineY);
+          targetCtx.closePath();
+          targetCtx.fill();
+          targetCtx.stroke();
+
+          targetCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text');
+          targetCtx.textAlign = 'right';
+          targetCtx.font = '400 12px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+          targetCtx.fillText(s.name, x + w - 5, baselineY - sampleHeight + 15);
+        });
+    } else { // Overlay
+        let allDensityPoints = [];
+        let globalMaxDensity = 0;
+
+        visSamples.forEach(s => {
+          const i = s.params.indexOf(axis.xParam); if(i<0) return;
+          const data = s.data[i].filter((_, k) => popFilter(s, k));
+          if (data.length === 0) return;
+          const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, 200);
+          let maxDensity = 0;
+          for(const p of densityPoints) if(p.y > maxDensity) maxDensity = p.y;
+          if(maxDensity > globalMaxDensity) globalMaxDensity = maxDensity;
+          allDensityPoints.push({s, densityPoints});
+        });
+
+        if (globalMaxDensity === 0) return;
+        const ys = makeScaler(0, globalMaxDensity, 'linear', h);
+
+        allDensityPoints.forEach(({s, densityPoints}) => {
+            targetCtx.fillStyle = hexToRGBA(s.color, 0.35);
+            targetCtx.strokeStyle = s.color;
+            targetCtx.lineWidth = 1.5;
+
+            targetCtx.beginPath();
+            targetCtx.moveTo(x + xs.fwd(densityPoints[0].x), y + h);
+            addSmoothDensityCurveToPath(
+                targetCtx,
+                densityPoints,
+                p => x + xs.fwd(p.x),
+                p => y + h - ys.fwd(p.y)
+            );
+            targetCtx.lineTo(x + xs.fwd(densityPoints[densityPoints.length - 1].x), y + h);
+            targetCtx.closePath();
+            targetCtx.fill();
+            targetCtx.stroke();
+        });
+    }
+    if (isOffset) {
+        const showGates = !isExport || !!exportOptions.showGates;
+        const showPercent = !isExport || !!exportOptions.showPercent;
+        if (showGates || showPercent) drawHistOffsetSegmentGates(targetCtx, width, height, isExport, exportOptions);
+    } else if (!isExport || (isExport && exportOptions.showGates)) {
+        drawGates(targetCtx, width, height, isExport, exportOptions);
+    }
+    drawPlotBorder(targetCtx, area);
+}
+
+function drawHistOffsetSegmentGates(targetCtx, width, height, isExport = false, exportOptions = {}) {
+    const area = plotArea(width, height);
+    const {x,y,w,h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const visSamples = visibleSamples();
+    if (!visSamples.length) return;
+    const sampleHeight = h / visSamples.length;
+    const showGates = !isExport || !!exportOptions.showGates;
+    const showPercent = !isExport || !!exportOptions.showPercent;
+    const segmentGates = gates.filter(g => gateVisibleForCurrentAxes(g) && isSegmentGate(g));
+
+    segmentGates.forEach(g => {
+        const {x0, x1} = g.def;
+        const effectiveSampleId = gateEffectiveSampleId(g);
+        const sampleIndex = effectiveSampleId ? visSamples.findIndex(s => s.id === effectiveSampleId) : -1;
+        if (effectiveSampleId && sampleIndex < 0) return;
+        const rx = x + xs.fwd(Math.min(x0, x1));
+        const rw = Math.abs(xs.fwd(x1) - xs.fwd(x0));
+        if (showGates) {
+            targetCtx.save();
+            const stroke = gateColor(g, getComputedStyle(document.body).getPropertyValue('--accent'));
+            const gy = sampleIndex >= 0 ? y + sampleIndex * sampleHeight : y;
+            const gh = sampleIndex >= 0 ? sampleHeight : h;
+            targetCtx.fillStyle = hexToRGBA(stroke, effectiveSampleId ? 0.08 : 0.06);
+            targetCtx.strokeStyle = stroke;
+            targetCtx.lineWidth = editingGate.id === g.id ? 2 : 1.15;
+            targetCtx.beginPath(); targetCtx.rect(rx, gy, rw, gh); targetCtx.fill();
+            targetCtx.beginPath(); targetCtx.moveTo(rx, gy); targetCtx.lineTo(rx, gy+gh); targetCtx.moveTo(rx+rw, gy); targetCtx.lineTo(rx+rw, gy+gh); targetCtx.stroke();
+            targetCtx.restore();
+            if (editingGate.id === g.id) drawGateHandles(targetCtx, g, width, height, {x, y: gy, w, h: gh});
+        }
+        if (showPercent) {
+            const labels = getCanvasHistOffsetGateLabelLayouts(width, height, targetCtx).filter(l => l.gateId === g.id);
+            labels.forEach(l => {
+                drawCanvasGateLabel(targetCtx, l.text, l.px, l.py, '400 10px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif');
+            });
+        }
+    });
+}
+
+function drawGates(targetCtx, width, height, isExport = false, exportOptions = {}) {
+    const area = plotArea(width, height);
+    const {x,y,w,h} = area;
+    const xs=makeScaler(axis.xMin,axis.xMax,axis.xScale,w);
+    const ys=makeScaler(axis.yMin,axis.yMax,axis.yScale,h);
+    const isHist = ui.plotType.value.startsWith('hist');
+
+    gates.forEach(g=>{
+        if (!gateVisibleForCurrentAxes(g)) return;
+
+        targetCtx.save();
+        const isEditing = editingGate.id === g.id;
+        const stroke = gateColor(g);
+        const baseCol = isEditing ? getComputedStyle(document.body).getPropertyValue('--accent') : stroke;
+        targetCtx.strokeStyle = baseCol;
+        targetCtx.lineWidth = isEditing ? 2 : 1.25;
+        targetCtx.fillStyle = gateEffectiveSampleId(g) ? hexToRGBA(stroke, 0.08) : getComputedStyle(document.body).getPropertyValue('--gate-fill');
+        
+        if (g.type==='rect'){
+            const {x0,y0,x1,y1} = g.def; const rx = x + xs.fwd(Math.min(x0,x1)); const ry = y + h - ys.fwd(Math.max(y0,y1)); const rw = Math.abs(xs.fwd(x1)-xs.fwd(x0)); const rh = Math.abs(ys.fwd(y1)-ys.fwd(y0));
+            targetCtx.beginPath(); targetCtx.rect(rx, ry, rw, rh); targetCtx.fill(); targetCtx.stroke();
+        } else if (isSegmentGate(g)) {
+            const {x0, x1} = g.def;
+            const rx = x + xs.fwd(Math.min(x0,x1));
+            const rw = Math.abs(xs.fwd(x1)-xs.fwd(x0));
+            targetCtx.fillStyle = hexToRGBA(stroke, gateEffectiveSampleId(g) ? 0.08 : 0.1);
+            targetCtx.beginPath(); targetCtx.rect(rx, y, rw, h); targetCtx.fill(); 
+            targetCtx.beginPath(); targetCtx.moveTo(rx, y); targetCtx.lineTo(rx, y+h); targetCtx.stroke();
+            targetCtx.beginPath(); targetCtx.moveTo(rx+rw, y); targetCtx.lineTo(rx+rw, y+h); targetCtx.stroke();
+        } else if (g.type==='poly' && !isHist){
+            const pts=g.def.pts; if(pts.length<2) return; targetCtx.beginPath(); pts.forEach((p,i)=>{ const px=x+xs.fwd(p.x), py=y+h-ys.fwd(p.y); if(i===0) targetCtx.moveTo(px,py); else targetCtx.lineTo(px,py); }); targetCtx.closePath(); targetCtx.fill(); targetCtx.stroke();
+        } else if (g.type==='ellipse' && !isHist){
+            if (drawEllipsePath(targetCtx, g, area)) { targetCtx.fill(); targetCtx.stroke(); }
+        }
+        targetCtx.restore();
+
+        if (isEditing) drawGateHandles(targetCtx, g, width, height);
+    });
+    if (!isExport || exportOptions.showPercent) drawGatePercentLabels(targetCtx, width, height);
+}
+
+function drawGateHandles(targetCtx, g, width, height, areaOverride = null) {
+    const area = areaOverride || plotArea(width, height);
+    const handles = getGateHandleLayouts(g, area);
+    handles.forEach(handle => {
+        targetCtx.save();
+        targetCtx.fillStyle = handle.role === 'rotate' ? getComputedStyle(document.body).getPropertyValue('--panel') : getComputedStyle(document.body).getPropertyValue('--accent');
+        targetCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--accent');
+        targetCtx.lineWidth = 2;
+        if (handle.role === 'rotate') {
+            targetCtx.beginPath();
+            targetCtx.moveTo(handle.anchorPx, handle.anchorPy);
+            targetCtx.lineTo(handle.px, handle.py);
+            targetCtx.stroke();
+        }
+        targetCtx.beginPath();
+        targetCtx.arc(handle.px, handle.py, handle.role === 'rotate' ? 5.5 : 5, 0, TAU);
+        targetCtx.fill();
+        targetCtx.stroke();
+        targetCtx.restore();
+    });
+}
+
+function getGateHandleLayouts(g, area = plotArea()) {
+    const {x,y,w,h} = area;
+    const xs=makeScaler(axis.xMin,axis.xMax,axis.xScale,w);
+    const ys=makeScaler(axis.yMin,axis.yMax,axis.yScale,h);
+    if (g.type === 'ellipse') {
+        const center = getEllipseCenterT(g);
+        const centerPx = transformedToScreen(center.x, center.y, area);
+        return ellipseHandleTransformedPoints(g).map(handle => {
+            const p = transformedToScreen(handle.x, handle.y, area);
+            return {...handle, px: p.x, py: p.y, anchorPx: centerPx.x, anchorPy: centerPx.y};
+        });
+    }
+    return getGateHandles(g).map(handle => {
+        const px = x + xs.fwd(handle.x);
+        const py = isSegmentGate(g) ? (y + h/2) : (y + h - ys.fwd(handle.y));
+        return {...handle, px, py};
+    });
+}
+
+function getGateHandles(g) {
+    if (g.type === 'poly') return g.def.pts.map((p, i) => ({...p, type: 'poly', index: i}));
+    if (g.type === 'rect') {
+        const {x0,y0,x1,y1} = g.def;
+        return [
+            {x: x0, y: y0, type: 'rect', corner: '00'}, {x: x1, y: y0, type: 'rect', corner: '10'},
+            {x: x0, y: y1, type: 'rect', corner: '01'}, {x: x1, y: y1, type: 'rect', corner: '11'},
+        ];
+    }
+    if (isSegmentGate(g)) {
+        const {x0, x1} = g.def;
+        return [{x: x0, y: 0, type: 'segment', side: 0}, {x: x1, y: 0, type: 'segment', side: 1}];
+    }
+    return [];
+}
+
+function visibleSamples(){ 
+    const orderedIds = Array.from(ui.fileList.children).map(row => row.dataset.sampleId);
+    return orderedIds.map(id => samples.find(s => s.id === id)).filter(s => s && visibleSampleIds.has(s.id));
+}
+function sampleById(sampleId) {
+    return samples.find(s => s.id === sampleId) || null;
+}
+function sampleName(sampleId) {
+    return sampleById(sampleId)?.name || 'sample';
+}
+function gateEffectiveSampleId(g) {
+    let cur = g;
+    const seen = new Set();
+    while (cur && !seen.has(cur.id)) {
+        if (cur.sampleId) return cur.sampleId;
+        seen.add(cur.id);
+        cur = cur.parentId ? gates.find(parent => parent.id === cur.parentId) : null;
+    }
+    return null;
+}
+function gateAppliesToSample(g, sampleId) {
+    const effectiveSampleId = gateEffectiveSampleId(g);
+    if (!effectiveSampleId && sampleId && g.excludeSampleIds?.includes(sampleId)) return false;
+    return !effectiveSampleId || effectiveSampleId === sampleId;
+}
+function gateColor(g, fallback = null) {
+    const effectiveSampleId = gateEffectiveSampleId(g);
+    if (effectiveSampleId) return sampleById(effectiveSampleId)?.color || fallback || getComputedStyle(document.body).getPropertyValue('--gate-stroke');
+    return fallback || getComputedStyle(document.body).getPropertyValue('--gate-stroke');
+}
+function gateSampleIsVisible(g) {
+    const effectiveSampleId = gateEffectiveSampleId(g);
+    return !effectiveSampleId || visibleSampleIds.has(effectiveSampleId);
+}
+function gridColumnCount(nSamples) {
+    const requested = ui.gridCols?.value || 'auto';
+    if (requested !== 'auto') return Math.max(1, Math.min(nSamples || 1, parseInt(requested, 10) || 1));
+    return Math.ceil(Math.sqrt(nSamples));
+}
+function isSegmentGate(g) { return g.type === 'segment' || g.type === 'range'; }
+function normalizeGate(g) {
+    if (!g) return g;
+    if (!g.xScale) g.xScale = axis.xScale || 'linear';
+    if (g.yParam && !g.yScale) g.yScale = axis.yScale || 'linear';
+    if (g.type === 'circle') {
+        const {cx, cy, r} = g.def;
+        const cxT = transformAxisValue(cx, g.xScale);
+        const cyT = transformAxisValue(cy, g.yScale);
+        const rx = Math.abs(transformAxisValue(cx + r, g.xScale) - cxT);
+        const ry = Math.abs(transformAxisValue(cy + r, g.yScale) - cyT);
+        g.type = 'ellipse';
+        g.def = {cx, cy, rx: isFinite(rx) && rx > 0 ? rx : Math.max(r, 1e-9), ry: isFinite(ry) && ry > 0 ? ry : Math.max(r, 1e-9), angle: 0};
+    }
+    return g;
+}
+function cloneGateDef(g) {
+    return JSON.parse(JSON.stringify(g.def || {}));
+}
+function forkGateForSample(g, sampleId) {
+    if (!g || !sampleId || gateEffectiveSampleId(g)) return g;
+    if (!g.excludeSampleIds) g.excludeSampleIds = [];
+    if (!g.excludeSampleIds.includes(sampleId)) g.excludeSampleIds.push(sampleId);
+    const clone = {
+        ...g,
+        id: idGen(),
+        name: `${g.name} (${sampleName(sampleId)})`,
+        sampleId,
+        def: cloneGateDef(g),
+        labelPos: g.labelPos ? JSON.parse(JSON.stringify(g.labelPos)) : undefined,
+        sampleLabelPos: g.sampleLabelPos ? JSON.parse(JSON.stringify(g.sampleLabelPos)) : undefined,
+        excludeSampleIds: undefined
+    };
+    gates.push(clone);
+    if (currentPopulationId === g.id) currentPopulationId = clone.id;
+    markGatePercentDirty();
+    refreshPopulationOptions();
+    rebuildGateTree();
+    return clone;
+}
+function baseGateName(g) {
+    return (g?.name || `Gate ${gates.length + 1}`).replace(/\s+\([^)]+\)$/,'');
+}
+function applyGateToSample(gateId, sampleId) {
+    const g = gates.find(g => g.id === gateId);
+    if (!g || !sampleId) return null;
+    const effectiveSampleId = gateEffectiveSampleId(g);
+    if (!effectiveSampleId) return forkGateForSample(g, sampleId);
+    if (effectiveSampleId === sampleId) return g;
+    const parent = g.parentId ? gates.find(parent => parent.id === g.parentId) : null;
+    const parentSampleId = parent ? gateEffectiveSampleId(parent) : null;
+    const clone = {
+        ...g,
+        id: idGen(),
+        name: `${baseGateName(g)} (${sampleName(sampleId)})`,
+        sampleId,
+        parentId: parentSampleId && parentSampleId !== sampleId ? null : (g.parentId || null),
+        def: cloneGateDef(g),
+        labelPos: g.labelPos ? JSON.parse(JSON.stringify(g.labelPos)) : undefined,
+        sampleLabelPos: undefined,
+        excludeSampleIds: undefined
+    };
+    gates.push(clone);
+    markGatePercentDirty();
+    refreshPopulationOptions();
+    rebuildGateTree();
+    render();
+    return clone;
+}
+function transformPointForGate(point, g) {
+    return {
+      x: transformAxisValue(point.x, g.xScale || axis.xScale),
+      y: transformAxisValue(point.y, g.yScale || axis.yScale)
+    };
+}
+function inversePointForGate(point, g) {
+    return {
+      x: inverseTransformAxisValue(point.x, g.xScale || axis.xScale),
+      y: inverseTransformAxisValue(point.y, g.yScale || axis.yScale)
+    };
+}
+function translateGate(g, startDef, deltaT) {
+    if (!g || !startDef) return;
+    if (g.type === 'rect') {
+        const p0 = inversePointForGate({
+          x: transformAxisValue(startDef.x0, g.xScale) + deltaT.x,
+          y: transformAxisValue(startDef.y0, g.yScale) + deltaT.y
+        }, g);
+        const p1 = inversePointForGate({
+          x: transformAxisValue(startDef.x1, g.xScale) + deltaT.x,
+          y: transformAxisValue(startDef.y1, g.yScale) + deltaT.y
+        }, g);
+        g.def.x0 = p0.x; g.def.y0 = p0.y; g.def.x1 = p1.x; g.def.y1 = p1.y;
+    } else if (isSegmentGate(g)) {
+        g.def.x0 = inverseTransformAxisValue(transformAxisValue(startDef.x0, g.xScale || axis.xScale) + deltaT.x, g.xScale || axis.xScale);
+        g.def.x1 = inverseTransformAxisValue(transformAxisValue(startDef.x1, g.xScale || axis.xScale) + deltaT.x, g.xScale || axis.xScale);
+    } else if (g.type === 'poly') {
+        g.def.pts = (startDef.pts || []).map(pt => inversePointForGate({
+          x: transformAxisValue(pt.x, g.xScale) + deltaT.x,
+          y: transformAxisValue(pt.y, g.yScale) + deltaT.y
+        }, g));
+    } else if (g.type === 'ellipse') {
+        const c = inversePointForGate({
+          x: transformAxisValue(startDef.cx, g.xScale) + deltaT.x,
+          y: transformAxisValue(startDef.cy, g.yScale) + deltaT.y
+        }, g);
+        g.def.cx = c.x; g.def.cy = c.y;
+    }
+}
+function translateGateLabelPositions(g, startLabelPos, startSampleLabelPos, deltaT) {
+    if (startLabelPos && isFinite(startLabelPos.x)) {
+        const next = {...startLabelPos};
+        next.x = inverseTransformAxisValue(transformAxisValue(startLabelPos.x, g.xScale || axis.xScale) + deltaT.x, g.xScale || axis.xScale);
+        if (!isSegmentGate(g) && isFinite(startLabelPos.y)) {
+            next.y = inverseTransformAxisValue(transformAxisValue(startLabelPos.y, g.yScale || axis.yScale) + deltaT.y, g.yScale || axis.yScale);
+        }
+        g.labelPos = next;
+    }
+    if (startSampleLabelPos && isSegmentGate(g)) {
+        g.sampleLabelPos = {};
+        Object.entries(startSampleLabelPos).forEach(([sampleId, pos]) => {
+            if (!pos || !isFinite(pos.x)) return;
+            g.sampleLabelPos[sampleId] = {
+                ...pos,
+                x: inverseTransformAxisValue(transformAxisValue(pos.x, g.xScale || axis.xScale) + deltaT.x, g.xScale || axis.xScale)
+            };
+        });
+    }
+}
+function gateVisibleForCurrentAxes(g, sampleId = null) {
+    const isHist = ui.plotType.value.startsWith('hist');
+    if (g.xParam !== axis.xParam) return false;
+    if (!isHist && g.yParam !== axis.yParam) return false;
+    if (!gateSampleIsVisible(g)) return false;
+    if (sampleId && !gateAppliesToSample(g, sampleId)) return false;
+    return true;
+}
+function calculateGateAnchor(g) {
+    if (g.type === 'rect') {
+        const {x0, y0, x1, y1} = g.def;
+        return { x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
+    }
+    if (g.type === 'ellipse') return { x: g.def.cx, y: g.def.cy };
+    if (g.type === 'poly') {
+        const pts = g.def.pts || [];
+        if (!pts.length) return { x: axis.xMin, y: axis.yMin };
+        const sx = pts.reduce((a, p) => a + p.x, 0);
+        const sy = pts.reduce((a, p) => a + p.y, 0);
+        return { x: sx / pts.length, y: sy / pts.length };
+    }
+    if (isSegmentGate(g)) {
+        const x = (g.def.x0 + g.def.x1) / 2;
+        const y = axis.yMin + (axis.yMax - axis.yMin) * 0.9;
+        return { x, y };
+    }
+    return { x: axis.xMin, y: axis.yMin };
+}
+function clampLabelToAxis(x, y) {
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const safeXMin = axis.xScale === 'log' ? Math.max(axis.xMin, 1e-12) : axis.xMin;
+    const safeYMin = axis.yScale === 'log' ? Math.max(axis.yMin, 1e-12) : axis.yMin;
+    return {
+      x: clamp(x, safeXMin, axis.xMax),
+      y: clamp(y, safeYMin, axis.yMax)
+    };
+}
+function clamp01(v, fallback = 0.1) {
+    if (!isFinite(v)) return fallback;
+    return Math.max(0.04, Math.min(0.96, v));
+}
+function ensureGateLabelPos(g) {
+    if (g.labelPos && isFinite(g.labelPos.x) && isFinite(g.labelPos.y)) return g.labelPos;
+    const a = calculateGateAnchor(g);
+    const dy = (axis.yMax - axis.yMin) * 0.05;
+    g.labelPos = clampLabelToAxis(a.x, a.y + dy);
+    if (isSegmentGate(g) && !isFinite(g.labelPos.yFrac)) g.labelPos.yFrac = 0.1;
+    return g.labelPos;
+}
+function ensureSampleGateLabelPos(g, sampleId) {
+    if (!g.sampleLabelPos) g.sampleLabelPos = {};
+    const existing = g.sampleLabelPos[sampleId];
+    if (existing && isFinite(existing.x) && isFinite(existing.yFrac)) return existing;
+    const x = (g.def.x0 + g.def.x1) / 2;
+    const pos = { x, yFrac: 0.38 };
+    g.sampleLabelPos[sampleId] = pos;
+    return pos;
+}
+function recalculateGatePercentCache() {
+    if (!gatePercentCacheDirty) return;
+    gatePercentCache = new Map();
+    gatePercentBySampleCache = new Map();
+    gates.forEach(g => {
+        const gateFilter = makePopulationFilter(g.id);
+        const parentFilter = makePopulationFilter(g.parentId);
+        let gateCount = 0;
+        let parentCount = 0;
+        const bySample = new Map();
+        visibleSamples().forEach(s => {
+            if (!gateAppliesToSample(g, s.id)) {
+                bySample.set(s.id, null);
+                return;
+            }
+            let gateCountSample = 0;
+            let parentCountSample = 0;
+            for (let i = 0; i < s.n; i++) {
+                if (parentFilter(s, i)) { parentCount++; parentCountSample++; }
+                if (gateFilter(s, i)) { gateCount++; gateCountSample++; }
+            }
+            bySample.set(s.id, parentCountSample > 0 ? (gateCountSample / parentCountSample * 100) : null);
+        });
+        gatePercentCache.set(g.id, parentCount > 0 ? (gateCount / parentCount * 100) : null);
+        gatePercentBySampleCache.set(g.id, bySample);
+    });
+    gatePercentCacheDirty = false;
+}
+function gatePercentText(g) {
+    recalculateGatePercentCache();
+    const pct = gatePercentCache.get(g.id);
+    if (!isFinite(pct)) return 'N/A';
+    return `${pct.toFixed(2)}%`;
+}
+function gatePercentTextForSample(g, sampleId) {
+    recalculateGatePercentCache();
+    const bySample = gatePercentBySampleCache.get(g.id);
+    const pct = bySample ? bySample.get(sampleId) : null;
+    if (!isFinite(pct)) return 'N/A';
+    return `${pct.toFixed(2)}%`;
+}
+function getGridCellLayouts(width, height) {
+    const area = plotArea(width, height);
+    const visSamples = visibleSamples();
+    const nSamples = visSamples.length;
+    if (!nSamples) return [];
+    const cols = gridColumnCount(nSamples);
+    const rows = Math.ceil(nSamples / cols);
+    const cellW = area.w / cols;
+    const cellH = area.h / rows;
+    return visSamples.map((sample, i) => {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        return {
+            sample,
+            cellArea: { x: area.x + col * cellW, y: area.y + row * cellH, w: cellW, h: cellH }
+        };
+    });
+}
+function getHistOffsetCellLayouts(width, height) {
+    const area = plotArea(width, height);
+    const visSamples = visibleSamples();
+    if (!visSamples.length) return [];
+    const sampleHeight = area.h / visSamples.length;
+    return visSamples.map((sample, i) => ({
+        sample,
+        cellArea: {x: area.x, y: area.y + i * sampleHeight, w: area.w, h: sampleHeight}
+    }));
+}
+function pointInArea(px, py, area) {
+    return px >= area.x && px <= area.x + area.w && py >= area.y && py <= area.y + area.h;
+}
+function pointerPlotContext(px, py, areaOverride = null) {
+    if (areaOverride) return {area: areaOverride, sample: null};
+    const plotType = ui.plotType.value;
+    if (plotType === 'scatter-grid') {
+        const hit = getGridCellLayouts(plotLogicalWidth(), plotLogicalHeight()).find(c => pointInArea(px, py, c.cellArea));
+        return hit ? {area: hit.cellArea, sample: hit.sample} : null;
+    }
+    if (plotType === 'hist-offset') {
+        const hit = getHistOffsetCellLayouts(plotLogicalWidth(), plotLogicalHeight()).find(c => pointInArea(px, py, c.cellArea));
+        return hit ? {area: hit.cellArea, sample: hit.sample} : null;
+    }
+    const area = plotArea();
+    return pointInArea(px, py, area) ? {area, sample: null} : null;
+}
+function dataFromPointer(px, py, area) {
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, area.w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, area.h);
+    return {x: xs.inv(px - area.x), y: ys.inv((area.y + area.h) - py)};
+}
+function getCanvasGateLabelLayouts(width, height, targetCtx = ctx) {
+    const area = plotArea(width, height);
+    const {x, y, w, h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const labels = [];
+    targetCtx.save();
+    targetCtx.font = '400 12px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+    gates.forEach(g => {
+        if (!gateVisibleForCurrentAxes(g)) return;
+        const pos = ensureGateLabelPos(g);
+        const px = x + xs.fwd(pos.x);
+        const py = ui.plotType.value.startsWith('hist') && isSegmentGate(g)
+          ? y + h * clamp01(pos.yFrac, 0.1)
+          : y + h - ys.fwd(pos.y);
+        if (!isFinite(px) || !isFinite(py)) return;
+        const text = gatePercentText(g);
+        const tw = targetCtx.measureText(text).width;
+        const bw = tw + 10, bh = 18;
+        labels.push({ gateId: g.id, text, px, py, bw, bh });
+    });
+    targetCtx.restore();
+    return labels;
+}
+function getCanvasGridGateLabelLayouts(width, height, targetCtx = ctx) {
+    const labels = [];
+    const cells = getGridCellLayouts(width, height);
+    targetCtx.save();
+    targetCtx.font = '400 10px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+    cells.forEach(({sample, cellArea}) => {
+        const {x, y, w, h} = cellArea;
+        const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+        const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+        gates.forEach(g => {
+            if (!gateVisibleForCurrentAxes(g, sample.id)) return;
+            const pos = ensureGateLabelPos(g);
+            const px = x + xs.fwd(pos.x);
+            const py = y + h - ys.fwd(pos.y);
+            if (!isFinite(px) || !isFinite(py)) return;
+            const text = gatePercentTextForSample(g, sample.id);
+            const tw = targetCtx.measureText(text).width;
+            const bw = tw + 8, bh = 14;
+            labels.push({ gateId: g.id, sampleId: sample.id, text, px, py, bw, bh, cellArea });
+        });
+    });
+    targetCtx.restore();
+    return labels;
+}
+function getCanvasHistOffsetGateLabelLayouts(width, height, targetCtx = ctx) {
+    const labels = [];
+    const area = plotArea(width, height);
+    const {x, y, w, h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const visSamples = visibleSamples();
+    if (!visSamples.length) return labels;
+    const sampleHeight = h / visSamples.length;
+    targetCtx.save();
+    targetCtx.font = '400 10px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+    gates.forEach(g => {
+        if (!gateVisibleForCurrentAxes(g) || !isSegmentGate(g)) return;
+        visSamples.forEach((sample, sampleIndex) => {
+            if (!gateAppliesToSample(g, sample.id)) return;
+            const pos = ensureSampleGateLabelPos(g, sample.id);
+            const cellArea = { x, y: y + sampleIndex * sampleHeight, w, h: sampleHeight };
+            const px = x + xs.fwd(pos.x);
+            const py = cellArea.y + sampleHeight * clamp01(pos.yFrac, 0.38);
+            if (!isFinite(px) || !isFinite(py)) return;
+            const text = gatePercentTextForSample(g, sample.id);
+            const tw = targetCtx.measureText(text).width;
+            const bw = tw + 8, bh = 14;
+            labels.push({ gateId: g.id, sampleId: sample.id, text, px, py, bw, bh, cellArea, isOffsetHist: true });
+        });
+    });
+    targetCtx.restore();
+    return labels;
+}
+function drawCanvasGateLabel(targetCtx, text, px, py, font = '400 12px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif') {
+    targetCtx.save();
+    targetCtx.font = font;
+    targetCtx.textAlign = 'center';
+    targetCtx.textBaseline = 'middle';
+    targetCtx.lineWidth = 3;
+    targetCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--canvas-bg');
+    targetCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text');
+    targetCtx.strokeText(text, px, py + 0.5);
+    targetCtx.fillText(text, px, py + 0.5);
+    targetCtx.restore();
+}
+function drawGatePercentLabels(targetCtx, width, height) {
+    const labels = getCanvasGateLabelLayouts(width, height, targetCtx);
+    labels.forEach(l => {
+        drawCanvasGateLabel(targetCtx, l.text, l.px, l.py);
+    });
+}
+function hitTestGatePercentLabel(px, py) {
+    const plotType = ui.plotType.value;
+    const labels = plotType === 'scatter-grid'
+      ? getCanvasGridGateLabelLayouts(plotLogicalWidth(), plotLogicalHeight(), ctx)
+      : plotType === 'hist-offset'
+        ? getCanvasHistOffsetGateLabelLayouts(plotLogicalWidth(), plotLogicalHeight(), ctx)
+        : getCanvasGateLabelLayouts(plotLogicalWidth(), plotLogicalHeight(), ctx);
+    for (const l of labels) {
+        const x0 = l.px - l.bw / 2;
+        const y0 = l.py - l.bh / 2;
+        if (px >= x0 && px <= x0 + l.bw && py >= y0 && py <= y0 + l.bh) return l;
+    }
+    return null;
+}
+
+// ---------------------------- Population & Stats ----------------------------
+function makePopulationFilter(gateId){
+  if (!gateId) return ()=>true;
+  const stack=[]; let g = gates.find(g=>g.id===gateId); while(g){ stack.push(g); g = g.parentId? gates.find(x=>x.id===g.parentId):null; }
+  return (s, idx)=> stack.every(G=> gateAppliesToSample(G, s.id) && pointInGate(G, valueOf(s, G.xParam, idx), valueOf(s, G.yParam, idx)));
+}
+
+function valueOf(sample, param, i){ const pi = sample.params.indexOf(param); if(pi<0) return NaN; return sample.data[pi][i]; }
+
+function pointInGate(g, xval, yval){ 
+    if(!isFinite(xval)) return false; 
+    if(isSegmentGate(g)) {
+        const {x0, x1} = g.def;
+        const min = Math.min(x0, x1), max = Math.max(x0, x1);
+        return xval >= min && xval <= max;
+    }
+    if(!isFinite(yval)) return false;
+
+    if(g.type==='rect'){ const {x0,y0,x1,y1}=g.def; const minx=Math.min(x0,x1), maxx=Math.max(x0,x1), miny=Math.min(y0,y1), maxy=Math.max(y0,y1); return xval>=minx && xval<=maxx && yval>=miny && yval<=maxy; } 
+    else if(g.type==='ellipse'){
+        const p = gatePointToTransformed(xval, yval, g);
+        const c = getEllipseCenterT(g);
+        if (!isFinite(p.x) || !isFinite(p.y) || !isFinite(c.x) || !isFinite(c.y)) return false;
+        const {rx, ry, angle = 0} = g.def;
+        if (!(rx > 0) || !(ry > 0)) return false;
+        const dx = p.x - c.x, dy = p.y - c.y;
+        const ca = Math.cos(angle), sa = Math.sin(angle);
+        const localX = dx * ca + dy * sa;
+        const localY = -dx * sa + dy * ca;
+        return (localX * localX) / (rx * rx) + (localY * localY) / (ry * ry) <= 1;
+    } 
+    else if(g.type==='poly'){
+        const p = gatePointToTransformed(xval, yval, g);
+        if (!isFinite(p.x) || !isFinite(p.y)) return false;
+        const pts = g.def.pts.map(pt => gatePointToTransformed(pt.x, pt.y, g)).filter(pt => isFinite(pt.x) && isFinite(pt.y));
+        return pts.length >= 3 && pnpoly(pts, p.x, p.y);
+    } 
+    return false; 
+}
+function pnpoly(pts, x, y){ let inside=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++) { const xi=pts[i].x, yi=pts[i].y, xj=pts[j].x, yj=pts[j].y; const intersect=((yi>y)!=(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi + 1e-12)+xi); if(intersect) inside=!inside; } return inside; }
+
+function updateStats(){
+  const targetGateId = currentPopulationId;
+  const targetGate = targetGateId ? gates.find(g => g.id === targetGateId) : null;
+  const targetSampleId = targetGate ? gateEffectiveSampleId(targetGate) : null;
+  const filt = makePopulationFilter(targetGateId);
+  let total=0, inPop=0; let inParent=0; let parentId=null;
+  visibleSamples().forEach(s=>{
+    if (targetSampleId && targetSampleId !== s.id) return;
+    const n=s.n;
+    total+=n;
+    const parentFilt = targetGateId ? makePopulationFilter(gates.find(g=>g.id===targetGateId)?.parentId) : ()=>true;
+    for(let k=0;k<n;k++){
+      if(parentFilt(s,k)) inParent++;
+      if(filt(s,k)) inPop++;
+    }
+  });
+
+  const pctTotal = total? (inPop/total*100):0;
+  const pctParent = inParent? (inPop/inParent*100):0;
+  ui.statsBox.innerHTML = `
+    <div><span class="pill">Events</span> <b>${inPop.toLocaleString()}</b></div>
+    <div><span class="pill">% of total</span> <b>${pctTotal.toFixed(2)}%</b></div>
+    <div><span class="pill">% of parent</span> <b>${pctParent.toFixed(2)}%</b></div>
+  `;
+}
+
+// ---------------------------- Gate Tree UI ----------------------------
+function closeGateApplyMenu() {
+    ui.gateApplyMenu.classList.remove('open');
+    ui.gateApplyMenu.innerHTML = '';
+}
+function openGateApplyMenu(gateId, clientX, clientY) {
+    const g = gates.find(g => g.id === gateId);
+    if (!g) return;
+    ui.gateApplyMenu.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'hint';
+    title.style.padding = '6px 8px';
+    title.textContent = 'Apply to sample';
+    ui.gateApplyMenu.append(title);
+    samples.forEach(sample => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const dot = document.createElement('span');
+        dot.style.cssText = `width:9px;height:9px;border-radius:50%;background:${sample.color};display:inline-block;margin-right:8px`;
+        btn.append(dot, document.createTextNode(sample.name));
+        btn.addEventListener('click', () => {
+            applyGateToSample(gateId, sample.id);
+            render();
+            closeGateApplyMenu();
+        });
+        ui.gateApplyMenu.append(btn);
+    });
+    ui.gateApplyMenu.classList.add('open');
+    const menuRect = ui.gateApplyMenu.getBoundingClientRect();
+    const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, clientX));
+    const top = Math.max(8, Math.min(window.innerHeight - menuRect.height - 8, clientY));
+    ui.gateApplyMenu.style.left = `${left}px`;
+    ui.gateApplyMenu.style.top = `${top}px`;
+}
+function rebuildGateTree(){
+  ui.gateTree.innerHTML='';
+  const root = {id:null};
+  function childrenOf(pid){ return gates.filter(g=>g.parentId===pid); }
+  function branchText(lineage) {
+    if (!lineage.length) return '•';
+    return lineage.slice(0, -1).map(isLast => isLast ? '  ' : '│ ').join('') + (lineage[lineage.length - 1] ? '└─' : '├─');
+  }
+  function rowFor(g, depth, lineage){
+    const row = document.createElement('div'); row.className='gateItem';
+    const branch = document.createElement('span');
+    branch.className = 'gateBranch';
+    branch.textContent = branchText(lineage);
+    const effectiveSampleId = gateEffectiveSampleId(g);
+    const dot = document.createElement('span');
+    if (effectiveSampleId) {
+        dot.className = 'gateSampleDot';
+        dot.style.background = sampleById(effectiveSampleId)?.color || gateColor(g);
+        dot.title = sampleName(effectiveSampleId);
+    }
+    const name = document.createElement('span');
+    name.className = 'gateName';
+    name.textContent = g.name;
+    name.contentEditable = true;
+    name.addEventListener('blur', () => {
+        g.name = name.textContent;
+        refreshPopulationOptions();
+    });
+    name.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); name.blur(); }
+    });
+
+    const meta = document.createElement('span');
+    meta.className='hint';
+    meta.textContent = ` (${isSegmentGate(g) ? 'segment' : g.type}${effectiveSampleId ? ` · ${sampleName(effectiveSampleId)}` : ''})`;
+    const del = document.createElement('button');
+    del.className = 'borderless icon-only gateDelete';
+    del.type = 'button';
+    del.title = `Delete ${g.name}`;
+    del.setAttribute('aria-label', `Delete ${g.name}`);
+    del.textContent = '✕';
+    del.addEventListener('click', (e) => { e.stopPropagation(); removeGateAndChildren(g.id); });
+    row.addEventListener('dblclick', (e) => {
+        if (e.target === del) return;
+        selectGatePopulation(g.id);
+    });
+    row.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openGateApplyMenu(g.id, e.clientX, e.clientY);
+    });
+    row.append(branch);
+    if (effectiveSampleId) row.append(dot);
+    row.append(name, meta, del);
+    ui.gateTree.append(row);
+  }
+  function walk(pid, depth, lineage = []){
+    const children = childrenOf(pid);
+    children.forEach((g, idx)=>{
+        const isLast = idx === children.length - 1;
+        const nextLineage = depth === 0 ? [] : [...lineage, isLast];
+        rowFor(g, depth, nextLineage);
+        walk(g.id, depth+1, depth === 0 ? [isLast] : nextLineage);
+    });
+  }
+  walk(null,0);
+  ui.gatesEmptyState.style.display = gates.length ? 'none' : 'block';
+}
+
+function gateAndDescendantIds(gateId) {
+    const ids = new Set([gateId]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        gates.forEach(g => {
+            if (g.parentId && ids.has(g.parentId) && !ids.has(g.id)) {
+                ids.add(g.id);
+                changed = true;
+            }
+        });
+    }
+    return ids;
+}
+function removeGateAndChildren(gateId) {
+    const ids = gateAndDescendantIds(gateId);
+    gates = gates.filter(g => !ids.has(g.id));
+    if (ids.has(currentPopulationId)) currentPopulationId = null;
+    if (ids.has(editingGate.id)) editingGate.id = null;
+    markGatePercentDirty();
+    refreshPopulationOptions();
+    rebuildGateTree();
+    render();
+}
+function selectGatePopulation(gateId) {
+    if (!gates.some(g => g.id === gateId)) return;
+    currentPopulationId = gateId;
+    ui.population.value = gateId;
+    editingGate.id = gateId;
+    if (!maybeSwitchToSscHeightAreaForGate(gateId)) render();
+}
+
+// ---------------------------- Gate Drawing & Editing ----------------------------
+function hitGateAtCanvasPoint(px, py) {
+    const pointerCtx = pointerPlotContext(px, py);
+    if (!pointerCtx) return null;
+    const data = dataFromPointer(px, py, pointerCtx.area);
+    const sampleId = pointerCtx.sample?.id || null;
+    return gates.slice().reverse().find(g => gateVisibleForCurrentAxes(g, sampleId) && pointInGate(g, data.x, data.y)) || null;
+}
+ui.plot.addEventListener('mousedown', (e)=>{
+  const rect = ui.plot.getBoundingClientRect(); const px = e.clientX-rect.left, py=e.clientY-rect.top;
+  const pointerCtx = pointerPlotContext(px, py);
+  const activeArea = pointerCtx?.area || plotArea();
+  const {x,y,w,h} = activeArea;
+  const data = dataFromPointer(px, py, activeArea);
+  const sampleId = pointerCtx?.sample?.id || null;
+
+  if (tool === 'select') {
+    const hitLabel = hitTestGatePercentLabel(px, py);
+    if (hitLabel) {
+        const hitGate = gates.find(g => g.id === hitLabel.gateId);
+        const targetGate = ui.plotType.value === 'scatter-grid' && hitLabel.sampleId ? forkGateForSample(hitGate, hitLabel.sampleId) : hitGate;
+        labelDragGateId = targetGate?.id || hitLabel.gateId;
+        labelDragCellArea = hitLabel.cellArea || null;
+        labelDragSampleId = hitLabel.sampleId || null;
+        return;
+    }
+    if (editingGate.id) {
+        const g = gates.find(g => g.id === editingGate.id);
+        const handles = g && gateVisibleForCurrentAxes(g, sampleId) ? getGateHandleLayouts(g, activeArea) : [];
+        for (const handle of handles) {
+            const hitHandle = isSegmentGate(g) ? Math.abs(px - handle.px) < 9 : Math.hypot(px - handle.px, py - handle.py) < 9;
+            if (hitHandle) {
+                const targetGate = ui.plotType.value === 'scatter-grid' && sampleId ? forkGateForSample(g, sampleId) : g;
+                editingGate.handle = handle;
+                editingGate.id = targetGate.id;
+                editingGate.area = activeArea;
+                return;
+            }
+        }
+    }
+    editingGate.id = null;
+    if (pointerCtx) for (const g of gates.slice().reverse()) {
+        if (gateVisibleForCurrentAxes(g, sampleId) && pointInGate(g, data.x, data.y)) {
+            const targetGate = ui.plotType.value === 'scatter-grid' && sampleId ? forkGateForSample(g, sampleId) : g;
+            editingGate.id = targetGate.id;
+            gateDragState = {
+                id: targetGate.id,
+                area: activeArea,
+                startT: {
+                    x: transformAxisValue(data.x, targetGate.xScale || axis.xScale),
+                    y: transformAxisValue(data.y, targetGate.yScale || axis.yScale)
+                },
+                def: cloneGateDef(targetGate),
+                labelPos: targetGate.labelPos ? JSON.parse(JSON.stringify(targetGate.labelPos)) : null,
+                sampleLabelPos: targetGate.sampleLabelPos ? JSON.parse(JSON.stringify(targetGate.sampleLabelPos)) : null
+            };
+            render();
+            return;
+        }
+    }
+    render();
+    return;
+  }
+
+  if (!pointerCtx) return; 
+
+  // Zoom Tool Logic
+  if (tool === 'zoom') {
+    drawState = {type:'zoom', start:data, cur:data, area: activeArea, sampleId};
+    return;
+  }
+
+  if (tool==='rect'){
+    drawState = {type:'rect', start:data, cur:data, shift:e.shiftKey, area: activeArea, sampleId};
+  } else if (tool==='segment'){
+    drawState = {type:'segment', start:data, cur:data, area: activeArea, sampleId};
+  } else if (tool==='ellipse'){
+    drawState = {type:'ellipse', start:data, cur:data, shift:e.shiftKey, area: activeArea, sampleId};
+  } else if (tool==='poly'){
+    drawState = drawState && drawState.type==='poly' ? drawState : {type:'poly', pts:[], area: activeArea, sampleId};
+    const last = drawState.pts[drawState.pts.length - 1];
+    drawState.pts.push(e.shiftKey && last ? constrainOrthogonalData(last, px, py, {x,y,w,h}) : data);
+    drawState.shift = e.shiftKey;
+  }
+});
+
+ui.plot.addEventListener('mousemove', (e)=>{
+  const rect = ui.plot.getBoundingClientRect(); const px = e.clientX-rect.left, py=e.clientY-rect.top;
+  const pointerCtx = pointerPlotContext(px, py);
+  const activeArea = gateDragState?.area || editingGate.area || drawState?.area || pointerCtx?.area || plotArea();
+  const {x,y,w,h} = activeArea;
+  const data = dataFromPointer(px, py, activeArea);
+
+  // Feature: Live Cursor Coordinates
+  if(pointerCtx) {
+      const cursorData = dataFromPointer(px, py, pointerCtx.area);
+      ui.cursorCoords.style.display = 'block';
+      ui.cursorCoords.textContent = ui.plotType.value.startsWith('hist')
+        ? `X: ${cursorData.x.toExponential(2)}`
+        : `X: ${cursorData.x.toExponential(2)}, Y: ${cursorData.y.toExponential(2)}`;
+  } else {
+      ui.cursorCoords.style.display = 'none';
+  }
+
+  if (labelDragGateId) {
+      const g = gates.find(x => x.id === labelDragGateId);
+      if (g) {
+          const dragArea = labelDragCellArea || {x, y, w, h};
+          const dragXs = makeScaler(axis.xMin, axis.xMax, axis.xScale, dragArea.w);
+          const dragYs = makeScaler(axis.yMin, axis.yMax, axis.yScale, dragArea.h);
+          const dragDataX = dragXs.inv(px - dragArea.x);
+          const dragDataY = dragYs.inv((dragArea.y + dragArea.h) - py);
+          if (labelDragSampleId && ui.plotType.value === 'hist-offset' && isSegmentGate(g)) {
+              if (!g.sampleLabelPos) g.sampleLabelPos = {};
+              g.sampleLabelPos[labelDragSampleId] = {
+                  x: clampLabelToAxis(dragDataX, dragDataY).x,
+                  yFrac: clamp01((py - dragArea.y) / dragArea.h, 0.38),
+                  manual: true
+              };
+          } else {
+              g.labelPos = clampLabelToAxis(dragDataX, dragDataY);
+              if (ui.plotType.value.startsWith('hist') && isSegmentGate(g)) {
+                  g.labelPos.yFrac = clamp01((py - dragArea.y) / dragArea.h, 0.1);
+              }
+              g.labelPos.manual = true;
+          }
+          render();
+      }
+      return;
+  }
+
+  if (gateDragState) {
+      const g = gates.find(g => g.id === gateDragState.id);
+      if (g) {
+          const pointerT = {
+              x: transformAxisValue(data.x, g.xScale || axis.xScale),
+              y: transformAxisValue(data.y, g.yScale || axis.yScale)
+          };
+          const deltaT = {x: pointerT.x - gateDragState.startT.x, y: pointerT.y - gateDragState.startT.y};
+          translateGate(g, gateDragState.def, deltaT);
+          translateGateLabelPositions(g, gateDragState.labelPos, gateDragState.sampleLabelPos, deltaT);
+          markGatePercentDirty();
+          render();
+      }
+      return;
+  }
+
+  if (editingGate.handle) {
+      const g = gates.find(g => g.id === editingGate.id);
+      const handle = editingGate.handle;
+      if (handle.type === 'poly') {
+          g.def.pts[handle.index] = {x: data.x, y: data.y};
+      } else if (handle.type === 'rect') {
+          if (handle.corner[0] === '0') g.def.x0 = data.x; else g.def.x1 = data.x;
+          if (handle.corner[1] === '0') g.def.y0 = data.y; else g.def.y1 = data.y;
+      } else if (handle.type === 'segment') {
+          if (handle.side === 0) g.def.x0 = data.x; else g.def.x1 = data.x;
+      } else if (handle.type === 'ellipse') {
+          const pointer = screenToTransformed(px, py, activeArea);
+          const center = getEllipseCenterT(g);
+          const dx = pointer.x - center.x;
+          const dy = pointer.y - center.y;
+          if (handle.role === 'rotate') {
+              g.def.angle = Math.atan2(dy, dx);
+          } else {
+              const ca = Math.cos(g.def.angle || 0);
+              const sa = Math.sin(g.def.angle || 0);
+              const localX = dx * ca + dy * sa;
+              const localY = -dx * sa + dy * ca;
+              if (handle.role === 'rx') g.def.rx = Math.max(1e-9, Math.abs(localX));
+              if (handle.role === 'ry') g.def.ry = Math.max(1e-9, Math.abs(localY));
+          }
+      }
+      markGatePercentDirty();
+      render();
+      return;
+  }
+
+  if (!drawState) return;
+  if (px<x||px>x+w||py<y||py>y+h){ if(drawState.type!=='poly') return; }
+  
+    const area = activeArea;
+  if (drawState.type==='rect') drawState.cur = e.shiftKey ? constrainSquareData(drawState.start, px, py, area, false) : data;
+  else if (drawState.type==='segment' || drawState.type==='zoom') drawState.cur = data;
+  else if (drawState.type==='ellipse') drawState.cur = data;
+  else if (drawState.type==='poly') {
+      const last = drawState.pts[drawState.pts.length - 1];
+      drawState.hover = e.shiftKey && last ? constrainOrthogonalData(last, px, py, area) : data;
+  }
+  drawState.shift = e.shiftKey;
+  render();
+  drawGhost();
+});
+
+ui.plot.addEventListener('dblclick', (e)=>{
+  if(drawState && drawState.type==='poly'){ finalizePoly(); return; }
+  const rect = ui.plot.getBoundingClientRect(); const px = e.clientX-rect.left, py=e.clientY-rect.top;
+  const g = hitGateAtCanvasPoint(px, py);
+  if (g) selectGatePopulation(g.id);
+});
+
+ui.plot.addEventListener('contextmenu', (e)=>{
+  const rect = ui.plot.getBoundingClientRect(); const px = e.clientX-rect.left, py=e.clientY-rect.top;
+  const g = hitGateAtCanvasPoint(px, py);
+  if (!g) return;
+  e.preventDefault();
+  openGateApplyMenu(g.id, e.clientX, e.clientY);
+});
+
+// Feature: Keyboard Shortcuts
+window.addEventListener('keydown', (e)=>{
+  const active = document.activeElement;
+  if (!active) return;
+  if (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA' || active.isContentEditable) return;
+
+  if (e.key === 's' || e.key === 'S') setTool('select');
+  if (e.key === 'z' || e.key === 'Z') setTool('zoom');
+  if (e.key === 'r' || e.key === 'R') setTool('rect');
+  if (e.key === 'g' || e.key === 'G') setTool('segment');
+  if (e.key === 'p' || e.key === 'P') setTool('poly');
+  if (e.key === 'e' || e.key === 'E' || e.key === 'c' || e.key === 'C') setTool('ellipse');
+  
+  if (e.key==='Enter' && drawState && drawState.type==='poly'){ finalizePoly(); }
+  else if (e.key==='Escape'){ closeGateApplyMenu(); editingGate.id = null; resetToSelect(); }
+});
+
+ui.plot.addEventListener('mouseup', (e)=>{
+  if (labelDragGateId) { labelDragGateId = null; labelDragCellArea = null; labelDragSampleId = null; return; }
+  if (gateDragState) { gateDragState = null; markGatePercentDirty(); render(); return; }
+  if (editingGate.handle) { editingGate.handle = null; editingGate.area = null; markGatePercentDirty(); render(); return; }
+  if (!drawState) return;
+  
+  // Feature: Zoom Execution
+  if (drawState.type === 'zoom') {
+      const {start, cur} = drawState;
+      const x0 = Math.min(start.x, cur.x), x1 = Math.max(start.x, cur.x);
+      
+      if (Math.abs(x1-x0) > 0) {
+        ui.xMin.value = x0; ui.xMax.value = x1;
+        saveAxisToCache(axis.xParam, true);
+
+        if(!ui.plotType.value.startsWith('hist')) {
+            const y0 = Math.min(start.y, cur.y), y1 = Math.max(start.y, cur.y);
+            if (Math.abs(y1-y0) > 0) {
+                ui.yMin.value = y0; ui.yMax.value = y1;
+                saveAxisToCache(axis.yParam, false);
+            }
+        }
+        setAxisFromUI(); render();
+      }
+      drawState = null;
+      setTool('select'); // Switch back to select after zoom
+      return;
+  }
+
+  if ((drawState.type === 'rect' || drawState.type === 'ellipse') && e.shiftKey) {
+      const rect = ui.plot.getBoundingClientRect();
+      const px = e.clientX - rect.left, py = e.clientY - rect.top;
+      const area = drawState.area || plotArea();
+      if (drawState.type === 'rect') drawState.cur = constrainSquareData(drawState.start, px, py, area, false);
+      if (drawState.type === 'ellipse') drawState.cur = screenToDataPoint(px, py, area);
+  }
+
+  if (drawState.type==='rect') finalizeRect();
+  else if (drawState.type==='segment') finalizeSegment();
+  else if (drawState.type==='ellipse') finalizeEllipse();
+});
+
+function drawGhost(){
+  const area = drawState?.area || plotArea();
+  const {x,y,w,h}=area; const xs=makeScaler(axis.xMin,axis.xMax,axis.xScale,w), ys=makeScaler(axis.yMin,axis.yMax,axis.yScale,h);
+  ctx.save(); 
+  
+  if (drawState.type === 'zoom') {
+      ctx.strokeStyle='#e7ecf3'; ctx.setLineDash([4,2]); ctx.lineWidth=1; ctx.fillStyle='rgba(255,255,255,0.1)';
+  } else {
+      ctx.strokeStyle='#7aa2ff'; ctx.setLineDash([6,4]); ctx.lineWidth=2; ctx.fillStyle=hexToRGBA('#7aa2ff', 0.15);
+  }
+  
+  if(drawState.type==='rect' || drawState.type==='segment' || drawState.type === 'zoom'){
+    let {start,cur} = drawState; let x0=start.x, y0=start.y, x1=cur.x, y1=cur.y;
+    
+    if (drawState.type === 'segment') {
+        const rx = x + xs.fwd(Math.min(x0,x1)); const rw = Math.abs(xs.fwd(x1)-xs.fwd(x0));
+        ctx.beginPath(); ctx.rect(rx, y, rw, h); ctx.fill(); ctx.stroke();
+    } else {
+        const rx=x+xs.fwd(Math.min(x0,x1)), ry=y+h-ys.fwd(Math.max(y0,y1)), rw=Math.abs(xs.fwd(x1)-xs.fwd(x0)), rh=Math.abs(ys.fwd(y1)-ys.fwd(y0));
+        ctx.beginPath(); ctx.rect(rx,ry,rw,rh); ctx.fill(); ctx.stroke();
+    }
+  } else if(drawState.type==='ellipse'){
+    const {start,cur} = drawState;
+    const ellipse = rotatedEllipseFromBox(start, cur, drawState.shift);
+    const ghost = {xScale: axis.xScale, yScale: axis.yScale, def:{cx:ellipse.center.x, cy:ellipse.center.y, rx:ellipse.rx, ry:ellipse.ry, angle:ellipse.angle}};
+    if (drawEllipsePath(ctx, ghost, area)) { ctx.fill(); ctx.stroke(); }
+  } else if(drawState.type==='poly'){
+    const pts=[...drawState.pts]; if(drawState.hover) pts.push(drawState.hover);
+    if(pts.length>1){ ctx.beginPath(); pts.forEach((p,i)=>{ const px=x+xs.fwd(p.x), py=y+h-ys.fwd(p.y); if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); }); ctx.stroke(); }
+  }
+  ctx.restore();
+}
+
+function maybeSwitchToSscHeightAreaForGate(gateId) {
+    const g = gates.find(g => g.id === gateId);
+    if (!g || isSegmentGate(g) || !samples.length) return false;
+    const xName = (g.xParam || '').toUpperCase();
+    const yName = (g.yParam || '').toUpperCase();
+    if (!xName.includes('FSC') || !yName.includes('SSC')) return false;
+    const params = samples[0].params || [];
+    const sscH = params.find(p => p.toUpperCase().includes('SSC-H'));
+    const sscA = params.find(p => p.toUpperCase().includes('SSC-A'));
+    if (!sscH || !sscA) return false;
+    if (ui.xParam.value === sscH && ui.yParam.value === sscA) return false;
+    saveAxisToCache(ui.xParam.value, true);
+    saveAxisToCache(ui.yParam.value, false);
+    ui.xParam.value = sscH;
+    ui.yParam.value = sscA;
+    ui.xParam.dispatchEvent(new Event('change'));
+    ui.yParam.dispatchEvent(new Event('change'));
+    return true;
+}
+function parentIdForNewGate(sampleId) {
+    if (!currentPopulationId) return null;
+    const parent = gates.find(g => g.id === currentPopulationId);
+    if (!parent) return null;
+    const parentSampleId = gateEffectiveSampleId(parent);
+    if (sampleId && parentSampleId && parentSampleId !== sampleId) return null;
+    return currentPopulationId;
+}
+
+function finalizeRect(){
+  const {start,cur} = drawState; let x0=start.x, y0=start.y, x1=cur.x, y1=cur.y;
+  const sampleId = drawState.sampleId || null;
+  const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'rect', sampleId, parentId: parentIdForNewGate(sampleId), def:{x0,y0,x1,y1}, xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale};
+  gates.push(g); drawState=null; 
+  markGatePercentDirty();
+  refreshPopulationOptions(); rebuildGateTree(); render();
+  setTool('select');
+}
+
+function finalizeSegment(){
+  const {start,cur} = drawState;
+  const x0 = start.x, x1 = cur.x;
+  if (!isFinite(x0) || !isFinite(x1) || Math.abs(x1 - x0) <= 0) { drawState=null; render(); return; }
+  const sampleId = drawState.sampleId || null;
+  const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'segment', sampleId, parentId: parentIdForNewGate(sampleId), def:{x0, x1}, xParam: axis.xParam, yParam: null, xScale: axis.xScale, yScale: null};
+  gates.push(g); drawState=null;
+  markGatePercentDirty();
+  refreshPopulationOptions(); rebuildGateTree(); render();
+  setTool('select');
+}
+
+function finalizeEllipse(){
+  const {start,cur} = drawState;
+  const ellipse = rotatedEllipseFromBox(start, cur, drawState.shift);
+  const {center, rx, ry, angle} = ellipse;
+  if (!(rx > 0) || !(ry > 0)) { drawState=null; render(); return; }
+  const sampleId = drawState.sampleId || null;
+  const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'ellipse', sampleId, parentId: parentIdForNewGate(sampleId), def:{cx:center.x, cy:center.y, rx, ry, angle}, xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale};
+  gates.push(g); drawState=null; 
+  markGatePercentDirty();
+  refreshPopulationOptions(); rebuildGateTree(); render();
+  setTool('select');
+}
+
+function finalizePoly(){
+  const pts = (drawState?.pts||[]).slice(); if(pts.length<3){ drawState=null; render(); return; }
+  const sampleId = drawState.sampleId || null;
+  const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'poly', sampleId, parentId: parentIdForNewGate(sampleId), def:{pts}, xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale};
+  gates.push(g); drawState=null; 
+  markGatePercentDirty();
+  refreshPopulationOptions(); rebuildGateTree(); render();
+  setTool('select');
+}
+
+// ---------------------------- UI events ----------------------------
+['xParam','yParam'].forEach(id=>{
+  ui[id].addEventListener('change', (e)=>{ 
+      const paramName = e.target.value.toUpperCase();
+      axis[id.replace('Param','Param')] = e.target.value;
+
+      const scaleSelect = id === 'xParam' ? ui.xScale : ui.yScale;
+      const minInput = id === 'xParam' ? ui.xMin : ui.yMin;
+      const maxInput = id === 'xParam' ? ui.xMax : ui.yMax;
+
+      const cached = paramSettings[e.target.value];
+      if (cached) {
+          scaleSelect.value = cached.scale;
+          minInput.value = cached.min;
+          maxInput.value = cached.max;
+          axis[id.replace('Param','Scale')] = cached.scale;
+      } else {
+          autoRangesFromData();
+      }
+
+      const is2d = ui.plotType.value.startsWith('scatter');
+      const isHist = ui.plotType.value.startsWith('hist');
+      ui.yParam.disabled = isHist || !is2d; 
+      ui.yScale.disabled = isHist || !is2d;
+      ui.yMin.disabled = isHist || !is2d; 
+      ui.yMax.disabled = isHist || !is2d;
+      ui.autoY.disabled = isHist || !is2d;
+      
+      setAxisFromUI();
+      markGatePercentDirty();
+      render(); 
+  });
+});
+
+// Feature: Swap Axes Button
+ui.swapAxes.addEventListener('click', () => {
+    const temp = ui.xParam.value;
+    ui.xParam.value = ui.yParam.value;
+    ui.yParam.value = temp;
+    
+    // Manually trigger events so listeners fire
+    ui.xParam.dispatchEvent(new Event('change'));
+    ui.yParam.dispatchEvent(new Event('change'));
+});
+
+['plotType','gridCols'].forEach(id=>{
+    ui[id].addEventListener('change', (e)=>{
+        const is2d = ui.plotType.value.startsWith('scatter');
+        const isHist = ui.plotType.value.startsWith('hist');
+        ui.yParam.disabled = isHist || !is2d; 
+        ui.yScale.disabled = isHist || !is2d;
+        ui.yMin.disabled = isHist || !is2d; 
+        ui.yMax.disabled = isHist || !is2d;
+        ui.autoY.disabled = isHist || !is2d;
+        syncToolAvailability();
+        setAxisFromUI();
+        markGatePercentDirty();
+        render();
+    });
+});
+
+['xMin','xMax', 'xScale'].forEach(id => {
+    ui[id].addEventListener('change', () => {
+        setAxisFromUI();
+        saveAxisToCache(axis.xParam, true);
+        markGatePercentDirty();
+        render();
+    });
+});
+['yMin','yMax', 'yScale'].forEach(id => {
+    ui[id].addEventListener('change', () => {
+        setAxisFromUI();
+        saveAxisToCache(axis.yParam, false);
+        markGatePercentDirty();
+        render();
+    });
+});
+
+ui.autoX.addEventListener('click', ()=>{ 
+    setAxisFromUI();
+    if (!axis.xParam) return;
+    const [xmin, xmax] = axisDomain(axis.xParam, axis.xScale);
+    ui.xMin.value = xmin;
+    ui.xMax.value = xmax;
+    setAxisFromUI();
+    saveAxisToCache(axis.xParam, true);
+    markGatePercentDirty();
+    render(); 
+});
+ui.autoY.addEventListener('click', ()=>{ 
+    setAxisFromUI();
+    if (!axis.yParam || ui.yMin.disabled) return;
+    const [ymin, ymax] = axisDomain(axis.yParam, axis.yScale);
+    ui.yMin.value = ymin;
+    ui.yMax.value = ymax;
+    setAxisFromUI();
+    saveAxisToCache(axis.yParam, false);
+    markGatePercentDirty();
+    render(); 
+});
+ui.resetView.addEventListener('click', () => {
+    if (axis.xParam) delete paramSettings[axis.xParam];
+    if (axis.yParam) delete paramSettings[axis.yParam];
+    autoRangesFromData();
+    currentPopulationId = null;
+    ui.population.value = 'ALL';
+    render();
+});
+ui.population.addEventListener('change', ()=>{
+    currentPopulationId = ui.population.value==='ALL'? null : ui.population.value;
+    if (!currentPopulationId || !maybeSwitchToSscHeightAreaForGate(currentPopulationId)) render();
+});
+function openAxisPopover(axisKey, anchorEl) {
+    if (axisKey === 'y' && ui.yParam.disabled) return;
+    activeAxisPopover = axisKey;
+    fillAxisPopoverOptions();
+    const isX = axisKey === 'x';
+    ui.axisPopoverTitle.textContent = `${axisKey.toUpperCase()} axis`;
+    ui.axisPopoverParam.value = isX ? ui.xParam.value : ui.yParam.value;
+    ui.axisPopoverScale.value = isX ? ui.xScale.value : ui.yScale.value;
+    ui.axisPopoverMin.value = isX ? ui.xMin.value : ui.yMin.value;
+    ui.axisPopoverMax.value = isX ? ui.xMax.value : ui.yMax.value;
+    const rect = anchorEl.getBoundingClientRect();
+    const pop = ui.axisPopover;
+    pop.classList.add('open');
+    pop.setAttribute('aria-hidden', 'false');
+    const left = Math.max(8, Math.min(window.innerWidth - 260, rect.left + rect.width / 2 - 120));
+    const top = Math.max(8, Math.min(window.innerHeight - 230, rect.top - 8 - pop.offsetHeight));
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+}
+function closeAxisPopover() {
+    activeAxisPopover = null;
+    ui.axisPopover.classList.remove('open');
+    ui.axisPopover.setAttribute('aria-hidden', 'true');
+}
+function applyAxisPopover(auto = false) {
+    if (!activeAxisPopover) return;
+    const isX = activeAxisPopover === 'x';
+    const paramSel = isX ? ui.xParam : ui.yParam;
+    const scaleSel = isX ? ui.xScale : ui.yScale;
+    const minInput = isX ? ui.xMin : ui.yMin;
+    const maxInput = isX ? ui.xMax : ui.yMax;
+    paramSel.value = ui.axisPopoverParam.value;
+    scaleSel.value = ui.axisPopoverScale.value;
+    if (auto) {
+        delete paramSettings[paramSel.value];
+        const [min, max] = axisDomain(paramSel.value, scaleSel.value);
+        minInput.value = min;
+        maxInput.value = max;
+    } else {
+        minInput.value = ui.axisPopoverMin.value;
+        maxInput.value = ui.axisPopoverMax.value;
+    }
+    setAxisFromUI();
+    saveAxisToCache(paramSel.value, isX);
+    markGatePercentDirty();
+    render();
+    closeAxisPopover();
+}
+ui.xlabel.addEventListener('click', (e) => openAxisPopover('x', e.currentTarget));
+ui.ylabel.addEventListener('click', (e) => openAxisPopover('y', e.currentTarget));
+ui.xlabel.addEventListener('contextmenu', (e) => { e.preventDefault(); openAxisPopover('x', e.currentTarget); });
+ui.ylabel.addEventListener('contextmenu', (e) => { e.preventDefault(); openAxisPopover('y', e.currentTarget); });
+ui.axisPopoverClose.addEventListener('click', closeAxisPopover);
+ui.axisPopoverApply.addEventListener('click', () => applyAxisPopover(false));
+ui.axisPopoverAuto.addEventListener('click', () => applyAxisPopover(true));
+function previewAxisPopoverAutoRange() {
+    if (!activeAxisPopover) return;
+    const [min, max] = axisDomain(ui.axisPopoverParam.value, ui.axisPopoverScale.value);
+    ui.axisPopoverMin.value = min;
+    ui.axisPopoverMax.value = max;
+}
+ui.axisPopoverParam.addEventListener('change', previewAxisPopoverAutoRange);
+ui.axisPopoverScale.addEventListener('change', previewAxisPopoverAutoRange);
+document.addEventListener('click', (e) => {
+    if (!ui.axisPopover.classList.contains('open')) return;
+    if (ui.axisPopover.contains(e.target) || e.target === ui.xlabel || e.target === ui.ylabel) return;
+    closeAxisPopover();
+});
+document.addEventListener('click', (e) => {
+    if (!ui.gateApplyMenu.classList.contains('open')) return;
+    if (ui.gateApplyMenu.contains(e.target)) return;
+    closeGateApplyMenu();
+});
+
+[...document.querySelectorAll('[data-tool]')].forEach(b=> b.addEventListener('click', ()=>{ setTool(b.dataset.tool); }));
+
+ui.themeToggle.addEventListener('change', (e) => { document.body.dataset.theme = e.target.checked ? 'light' : 'dark'; render(); });
+
+ui.workspaceMenuButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = ui.workspaceMenu.classList.toggle('open');
+    ui.workspaceMenuButton.setAttribute('aria-expanded', String(isOpen));
+    ui.exportMenu.classList.remove('open');
+    ui.exportMenuButton.setAttribute('aria-expanded', 'false');
+});
+ui.exportMenuButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = ui.exportMenu.classList.toggle('open');
+    ui.exportMenuButton.setAttribute('aria-expanded', String(isOpen));
+    ui.workspaceMenu.classList.remove('open');
+    ui.workspaceMenuButton.setAttribute('aria-expanded', 'false');
+});
+document.addEventListener('click', (e) => {
+    if (!ui.workspaceMenu.contains(e.target) && e.target !== ui.workspaceMenuButton) {
+        ui.workspaceMenu.classList.remove('open');
+        ui.workspaceMenuButton.setAttribute('aria-expanded', 'false');
+    }
+    if (!ui.exportMenu.contains(e.target) && e.target !== ui.exportMenuButton) {
+        ui.exportMenu.classList.remove('open');
+        ui.exportMenuButton.setAttribute('aria-expanded', 'false');
+    }
+});
+ui.workspaceMenu.addEventListener('click', () => {
+    ui.workspaceMenu.classList.remove('open');
+    ui.workspaceMenuButton.setAttribute('aria-expanded', 'false');
+});
+ui.exportMenu.addEventListener('click', () => {
+    ui.exportMenu.classList.remove('open');
+    ui.exportMenuButton.setAttribute('aria-expanded', 'false');
+});
+
+// Exports
+ui.exportPNG.addEventListener('click', safeHandler('Open PNG export', () => {
+    ui.pngExportModal.classList.add('visible');
+}));
+ui.cancelPngExport.addEventListener('click', safeHandler('Close PNG export', () => ui.pngExportModal.classList.remove('visible')));
+ui.confirmPngExport.addEventListener('click', safeHandler('PNG export', () => {
+    const scale = Math.max(1, Math.min(10, +ui.pngScale.value || 1));
+    const logicalWidth = plotLogicalWidth();
+    const logicalHeight = plotLogicalHeight();
+    const canvas = document.createElement('canvas');
+    canvas.width = logicalWidth * scale;
+    canvas.height = logicalHeight * scale;
+    const tCtx = canvas.getContext('2d');
+    tCtx.scale(scale, scale);
+    
+    // We pass logical dimensions to render so it draws relatively correct to 900x600 but on a larger canvas
+    render(tCtx, true, { 
+        showGates: true, 
+        showPercent: ui.pngShowPercent.checked,
+        includeAxisTitles: true,
+        logicalWidth, 
+        logicalHeight 
+    });
+    
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plot.png';
+    a.click();
+    ui.pngExportModal.classList.remove('visible');
+}));
+
+ui.openPdfModal.addEventListener('click', safeHandler('Open PDF export', () => {
+    ui.pdfXLabel.value = axis.xParam || '';
+    const plotType = ui.plotType.value;
+    if (plotType.startsWith('hist')) ui.pdfYLabel.value = 'Percent of maximum';
+    else if (plotType.startsWith('scatter')) ui.pdfYLabel.value = axis.yParam || '';
+    else ui.pdfYLabel.value = '';
+    ui.pdfExportModal.classList.add('visible');
+}));
+ui.cancelPdfExport.addEventListener('click', safeHandler('Close PDF export', () => ui.pdfExportModal.classList.remove('visible')));
+ui.confirmPdfExport.addEventListener('click', safeHandler('PDF export', () => {
+    const cmToPt = 28.3465;
+    const exportOptions = {
+        width: +ui.pdfWidth.value * cmToPt,
+        height: +ui.pdfHeight.value * cmToPt,
+        showGates: ui.pdfShowGates.checked,
+        showSampleNames: ui.pdfShowSampleNames.checked,
+        showPercent: ui.pdfShowPercent.checked,
+        allEvents: ui.pdfAllEvents.checked,
+        xLabel: ui.pdfXLabel.value,
+        yLabel: ui.pdfYLabel.value,
+    };
+    exportPDF(exportOptions);
+    ui.pdfExportModal.classList.remove('visible');
+}));
+
+function exportPDF(options){
+  try {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) { alert('jsPDF not loaded (offline). Use PNG export instead.'); return; }
+    const pdf = new jsPDF({ orientation: options.width > options.height ? 'landscape' : 'portrait', unit: 'pt', format: [options.width, options.height] });
+    const exportPad = { l: 92, r: 22, t: 20, b: 82 };
+    const area = { x: exportPad.l, y: exportPad.t, w: options.width - exportPad.l - exportPad.r, h: options.height - exportPad.t - exportPad.b };
+    const plotType = ui.plotType.value;
+    const isLightMode = document.body.dataset.theme === 'light';
+    
+    if (plotType === 'scatter') { drawAxesPDF(pdf, area, isLightMode); drawScatterPlotPDF(pdf, area, options); }
+    else if (plotType === 'scatter-grid') { drawGridScatterPlotPDF(pdf, area, isLightMode, options); }
+    else if (plotType === 'hist' || plotType === 'hist-offset') {
+        const isOffsetHist = plotType === 'hist-offset';
+        drawAllHistPlotPDF(pdf, area, isLightMode, isOffsetHist, options);
+        if (options.showGates || options.showPercent) drawHistGatesPDF(pdf, area, isLightMode, options, isOffsetHist);
+    }
+    else {
+        const tempCanvas = document.createElement('canvas'); tempCanvas.width = options.width; tempCanvas.height = options.height;
+        render(tempCanvas.getContext('2d'), true, options);
+        pdf.addImage(tempCanvas.toDataURL('image/png'), 'PNG', 0, 0, options.width, options.height);
+    }
+    if (options.showGates && plotType !== 'scatter-grid' && !plotType.startsWith('hist')) drawGatesPDF(pdf, area, isLightMode, options);
+    if (plotType !== 'scatter-grid') drawPlotBorderPDF(pdf, area, isLightMode);
+    
+    const black = { r: 0, g: 0, b: 0 };
+    const labelColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--text'));
+    pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
+    pdf.setFontSize(12); pdf.setFont("helvetica");
+    const cx = area.x + area.w / 2; const cy = area.y + area.h / 2;
+    const xLines = wrapExportText(pdf, options.xLabel, area.w * 0.9);
+    const xBaseY = area.y + area.h + 34;
+    xLines.forEach((line, idx) => {
+      const yPos = xBaseY + idx * 12;
+      drawPdfSuperscriptText(pdf, line, cx, yPos, { align: 'center' });
+    });
+    const is2d = plotType.startsWith('scatter'), isHist = plotType.startsWith('hist');
+    const yLines = wrapExportText(pdf, options.yLabel, area.h * 0.9);
+    const yLabelXScatter = Math.max(10, area.x - 40);
+    const yLabelXHist = Math.max(14, area.x - 26);
+    if (is2d) drawVerticalWrappedLabel(pdf, yLines, yLabelXScatter, cy);
+    if (isHist) drawVerticalWrappedLabel(pdf, yLines, yLabelXHist, cy);
+    pdf.save('plot.pdf');
+  } catch (err) { alert('Vector PDF export failed: ' + err.message); console.error(err); }
+}
+
+function drawAxesPDF(pdf, area, isLightMode, drawXLabels = true, drawYLabels = true){
+    const {x,y,w,h} = area;
+    const black = { r: 0, g: 0, b: 0 };
+    const axisColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--axis-stroke'));
+    const tickColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--tick-stroke'));
+    const textColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--muted'));
+    pdf.setDrawColor(axisColor.r, axisColor.g, axisColor.b); pdf.setLineWidth(1); pdf.rect(x, y, w, h, 'S');
+    pdf.setFontSize(10); pdf.setTextColor(textColor.r, textColor.g, textColor.b);
+    const [xmin,xmax] = [axis.xMin, axis.xMax]; const [ymin,ymax] = [axis.yMin, axis.yMax];
+    const xs = makeScaler(xmin,xmax,axis.xScale,w);
+    if (drawXLabels) {
+        const xTicks = getAxisTicks(xmin, xmax, axis.xScale, 6);
+        xTicks.forEach(v => {
+            const tx = x + xs.fwd(v);
+            if (tx < x - 0.25 || tx > x + w + 0.25) return;
+            pdf.setDrawColor(tickColor.r, tickColor.g, tickColor.b); pdf.line(tx, y+h, tx, y+h+4);
+            const label = formatExportTickLabel(v, axis.xScale);
+            drawPdfSuperscriptText(pdf, label, tx, y+h+16, {align: 'center'});
+        });
+    }
+    const isScatter = ui.plotType.value.startsWith('scatter');
+    if(isScatter && drawYLabels) {
+        const ys = makeScaler(ymin,ymax,axis.yScale,h);
+        const yTicks = getAxisTicks(ymin, ymax, axis.yScale, 6);
+        yTicks.forEach(v => {
+            const ty = y + h - ys.fwd(v);
+            if (ty < y - 0.25 || ty > y + h + 0.25) return;
+            pdf.setDrawColor(tickColor.r, tickColor.g, tickColor.b); pdf.line(x-4, ty, x, ty);
+            const label = formatExportTickLabel(v, axis.yScale);
+            drawPdfSuperscriptText(pdf, label, x-8, ty+3, {align: 'right'});
+        });
+    }
+}
+function drawPlotBorderPDF(pdf, area, isLightMode){
+    const black = { r: 0, g: 0, b: 0 };
+    const axisColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--axis-stroke'));
+    pdf.setDrawColor(axisColor.r, axisColor.g, axisColor.b);
+    pdf.setLineWidth(1);
+    pdf.rect(area.x, area.y, area.w, area.h, 'S');
+}
+function drawPdfGateLabel(pdf, text, px, py, isLightMode, fontSize = 10) {
+    const black = { r: 0, g: 0, b: 0 };
+    const textColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--text'));
+    pdf.setTextColor(textColor.r, textColor.g, textColor.b);
+    pdf.setFontSize(fontSize);
+    pdf.text(text, px, py + 0.5, { align: 'center', baseline: 'middle' });
+}
+function drawEllipsePDF(pdf, g, area) {
+    const c = getEllipseCenterT(g);
+    const {rx, ry, angle = 0} = g.def;
+    if (!isFinite(c.x) || !isFinite(c.y) || !(rx > 0) || !(ry > 0)) return;
+    let prev = null;
+    for (let i = 0; i <= 96; i++) {
+        const t = (i / 96) * TAU;
+        const tx = c.x + Math.cos(t) * rx * Math.cos(angle) - Math.sin(t) * ry * Math.sin(angle);
+        const ty = c.y + Math.cos(t) * rx * Math.sin(angle) + Math.sin(t) * ry * Math.cos(angle);
+        const p = transformedToScreen(tx, ty, area);
+        if (prev) pdf.line(prev.x, prev.y, p.x, p.y);
+        prev = p;
+    }
+}
+function drawGridGateOverlaysPDF(pdf, cellArea, sample, isLightMode, options = {}) {
+    const {x, y, w, h} = cellArea;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const gateGray = { r: 70, g: 74, b: 80 };
+    const showGates = !!options.showGates;
+    const showPercent = !!options.showPercent;
+
+    pdf.setFontSize(9);
+    gates.forEach(g => {
+        if (!gateVisibleForCurrentAxes(g, sample.id)) return;
+        const strokeColor = gateEffectiveSampleId(g) ? hexToRgb(gateColor(g)) : (isLightMode ? gateGray : hexToRgb(getComputedStyle(document.body).getPropertyValue('--gate-stroke')));
+        if (showGates) {
+            pdf.setDrawColor(strokeColor.r, strokeColor.g, strokeColor.b);
+            pdf.setLineWidth(0.9);
+            if (g.type === 'rect') {
+                const {x0,y0,x1,y1} = g.def;
+                const rx = x + xs.fwd(Math.min(x0,x1));
+                const ry = y + h - ys.fwd(Math.max(y0,y1));
+                const rw = Math.abs(xs.fwd(x1) - xs.fwd(x0));
+                const rh = Math.abs(ys.fwd(y1) - ys.fwd(y0));
+                pdf.rect(rx, ry, rw, rh, 'S');
+            } else if (g.type === 'poly') {
+                const pts = g.def.pts || [];
+                if (pts.length >= 2) {
+                    const first = pts[0];
+                    let px0 = x + xs.fwd(first.x), py0 = y + h - ys.fwd(first.y);
+                    for (let i = 1; i < pts.length; i++) {
+                        const p = pts[i];
+                        const px1 = x + xs.fwd(p.x), py1 = y + h - ys.fwd(p.y);
+                        pdf.line(px0, py0, px1, py1);
+                        px0 = px1; py0 = py1;
+                    }
+                    const fx = x + xs.fwd(first.x), fy = y + h - ys.fwd(first.y);
+                    pdf.line(px0, py0, fx, fy);
+                }
+            } else if (g.type === 'ellipse') {
+                drawEllipsePDF(pdf, g, cellArea);
+            }
+        }
+
+        if (showPercent) {
+            const pos = ensureGateLabelPos(g);
+            const px = x + xs.fwd(pos.x);
+            const py = y + h - ys.fwd(pos.y);
+            if (!isFinite(px) || !isFinite(py)) return;
+            const text = gatePercentTextForSample(g, sample.id);
+            drawPdfGateLabel(pdf, text, px, py, isLightMode, 9);
+        }
+    });
+}
+
+function drawScatterPlotPDF(pdf, area, options){
+    const {x,y,w,h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const popFilter = makePopulationFilter(currentPopulationId);
+    visibleSamples().forEach(s => {
+        const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam); if (ix < 0 || iy < 0) return;
+        const ax = s.data[ix], ay = s.data[iy];
+        const pointColor = hexToRgb(s.color); pdf.setFillColor(pointColor.r, pointColor.g, pointColor.b); pdf.setGState(new pdf.GState({opacity: 0.65}));
+        const N = ax.length; 
+        // Feature: Stride logic based on All Events toggle
+        const stride = (options && options.allEvents) ? 1 : (N > 50000 ? Math.ceil(N / 50000) : 1);
+        for (let k=0; k<N; k+=stride) {
+            const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; 
+            const px = x + xs.fwd(vx); const py = y + h - ys.fwd(vy); 
+            if(px < x || px > x+w || py < y || py > y+h) continue; pdf.circle(px, py, 0.5, 'F');
+        }
+        pdf.setGState(new pdf.GState({opacity: 1.0}));
+    });
+}
+
+function drawGridScatterPlotPDF(pdf, area, isLightMode, options) {
+    const {x,y,w,h} = area;
+    const popFilter = makePopulationFilter(currentPopulationId);
+    const visSamples = visibleSamples();
+    const nSamples = visSamples.length;
+    if (nSamples === 0) { drawAxesPDF(pdf, area, isLightMode); return; }
+    const cols = gridColumnCount(nSamples); const rows = Math.ceil(nSamples / cols);
+    const cellW = w / cols; const cellH = h / rows;
+    visSamples.forEach((s, i) => {
+        const row = Math.floor(i / cols); const col = i % cols;
+        const cellX = x + col * cellW; const cellY = y + row * cellH;
+        const cellArea = {x: cellX, y: cellY, w: cellW, h: cellH};
+        drawAxesPDF(pdf, cellArea, isLightMode, row === rows - 1, col === 0);
+        const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, cellW); const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, cellH);
+        const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam); if (ix<0 || iy<0) return;
+        const ax=s.data[ix], ay=s.data[iy];
+        const pointColor = hexToRgb(s.color); pdf.setFillColor(pointColor.r, pointColor.g, pointColor.b); pdf.setGState(new pdf.GState({opacity: 0.65}));
+        const N = ax.length; 
+        const stride = (options && options.allEvents) ? 1 : (N > 25000/nSamples ? Math.ceil(N/(25000/nSamples)) : 1);
+        for (let k=0; k<N; k+=stride){ 
+            const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; 
+            const px = cellX + xs.fwd(vx); const py = cellY + cellH - ys.fwd(vy); 
+            if(px<cellX||px>cellX+cellW||py<cellY||py>cellY+cellH) continue; pdf.circle(px, py, 0.5, 'F');
+        }
+        pdf.setGState(new pdf.GState({opacity: 1.0}));
+        
+        // Feature: Toggle Sample Names
+        if (options.showSampleNames) {
+            const black = { r: 0, g: 0, b: 0 }; const textColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--text'));
+            pdf.setTextColor(textColor.r, textColor.g, textColor.b); pdf.setFontSize(10);
+            const lines = wrapExportText(pdf, s.name, Math.max(40, cellW - 10)).slice(0, 2);
+            lines.forEach((line, idx) => {
+              pdf.text(line, cellX + cellW - 5, cellY + 12 + idx * 10, {align: 'right'});
+            });
+        }
+        if (options.showGates || options.showPercent) drawGridGateOverlaysPDF(pdf, cellArea, s, isLightMode, options);
+        drawPlotBorderPDF(pdf, cellArea, isLightMode);
+    });
+}
+
+function drawAllHistPlotPDF(pdf, area, isLightMode, isOffset, options) {
+    const {x,y,w,h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const popFilter = makePopulationFilter(currentPopulationId);
+    const visSamples = visibleSamples();
+    if (visSamples.length === 0) return;
+    drawAxesPDF(pdf, area, isLightMode, true, !isOffset);
+
+    if (isOffset) {
+        const nSamples = visSamples.length;
+        const sampleHeight = h / nSamples;
+        visSamples.forEach((s, sampleIndex) => {
+            const i = s.params.indexOf(axis.xParam); if(i<0) return;
+            let data = Array.from(s.data[i]).filter((_, k) => popFilter(s, k));
+            if (data.length === 0) return;
+            const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, 200);
+            let maxDensity = Math.max(...densityPoints.map(p=>p.y));
+            if (maxDensity === 0) return;
+            
+            const baselineY = y + (sampleIndex + 1) * sampleHeight;
+            const color = hexToRgb(s.color);
+            pdf.setFillColor(color.r, color.g, color.b); pdf.setDrawColor(color.r, color.g, color.b);
+            pdf.setGState(new pdf.GState({opacity: 0.6})); pdf.setLineWidth(1.5);
+            
+            const startPoint = [x + xs.fwd(densityPoints[0].x), baselineY];
+            pdf.moveTo(startPoint[0], startPoint[1]);
+            densityPoints.forEach(p => pdf.lineTo(x + xs.fwd(p.x), baselineY - (p.y / maxDensity) * sampleHeight * 0.8));
+            pdf.lineTo(x + xs.fwd(densityPoints[densityPoints.length - 1].x), baselineY);
+            pdf.lineTo(startPoint[0], startPoint[1]); 
+            pdf.fillStroke();
+            pdf.setGState(new pdf.GState({opacity: 1.0}));
+
+            if (options.showSampleNames) {
+                const black = { r: 0, g: 0, b: 0 };
+                const textColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--text'));
+                pdf.setTextColor(textColor.r, textColor.g, textColor.b);
+                pdf.setFontSize(12);
+                const lines = wrapExportText(pdf, s.name, Math.max(60, w * 0.35)).slice(0, 2);
+                lines.forEach((line, idx) => {
+                  pdf.text(line, x + w - 5, baselineY - sampleHeight + 15 + idx * 10, {align: 'right'});
+                });
+            }
+        });
+    } else { 
+        let allDensityPoints = [], globalMaxDensity = 0;
+        visSamples.forEach(s => {
+            const i = s.params.indexOf(axis.xParam); if(i<0) return;
+            const data = s.data[i].filter((_, k) => popFilter(s, k));
+            if (data.length === 0) return;
+            const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, 200);
+            globalMaxDensity = Math.max(globalMaxDensity, ...densityPoints.map(p=>p.y));
+            allDensityPoints.push({s, densityPoints});
+        });
+        if (globalMaxDensity === 0) return;
+        const ys = makeScaler(0, globalMaxDensity, 'linear', h);
+        allDensityPoints.forEach(({s, densityPoints}) => {
+            const color = hexToRgb(s.color);
+            pdf.setFillColor(color.r, color.g, color.b); pdf.setDrawColor(color.r, color.g, color.b);
+            pdf.setGState(new pdf.GState({opacity: 0.35})); pdf.setLineWidth(1.5);
+            const startPoint = [x + xs.fwd(densityPoints[0].x), y + h];
+            pdf.moveTo(startPoint[0], startPoint[1]);
+            densityPoints.forEach(p => pdf.lineTo(x + xs.fwd(p.x), y + h - ys.fwd(p.y)));
+            pdf.lineTo(x + xs.fwd(densityPoints[densityPoints.length - 1].x), y + h);
+            pdf.lineTo(startPoint[0], startPoint[1]); 
+            pdf.fillStroke();
+            pdf.setGState(new pdf.GState({opacity: 1.0}));
+        });
+    }
+}
+
+function drawHistGatesPDF(pdf, area, isLightMode, options = {}, isOffset = false) {
+    const {x,y,w,h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const visSamples = visibleSamples();
+    const sampleHeight = isOffset && visSamples.length ? h / visSamples.length : h;
+    const gateGray = { r: 70, g: 74, b: 80 };
+    const defaultGateColor = isLightMode ? gateGray : hexToRgb(getComputedStyle(document.body).getPropertyValue('--gate-stroke'));
+
+    gates.forEach(g => {
+        if (!gateVisibleForCurrentAxes(g) || !isSegmentGate(g)) return;
+        const effectiveSampleId = gateEffectiveSampleId(g);
+        const sampleIndex = isOffset && effectiveSampleId ? visSamples.findIndex(s => s.id === effectiveSampleId) : -1;
+        if (isOffset && effectiveSampleId && sampleIndex < 0) return;
+        const gy = sampleIndex >= 0 ? y + sampleIndex * sampleHeight : y;
+        const gh = sampleIndex >= 0 ? sampleHeight : h;
+        const strokeColor = effectiveSampleId ? hexToRgb(gateColor(g)) : defaultGateColor;
+        const {x0, x1} = g.def;
+        const rx = x + xs.fwd(Math.min(x0, x1));
+        const rw = Math.abs(xs.fwd(x1) - xs.fwd(x0));
+
+        if (options.showGates) {
+            pdf.setFillColor(strokeColor.r, strokeColor.g, strokeColor.b);
+            pdf.setGState(new pdf.GState({opacity: effectiveSampleId ? 0.08 : 0.06}));
+            pdf.rect(rx, gy, rw, gh, 'F');
+            pdf.setGState(new pdf.GState({opacity: 1}));
+            pdf.setDrawColor(strokeColor.r, strokeColor.g, strokeColor.b);
+            pdf.setLineWidth(1);
+            pdf.line(rx, gy, rx, gy + gh);
+            pdf.line(rx + rw, gy, rx + rw, gy + gh);
+        }
+
+        if (options.showPercent) {
+            const labelItems = isOffset
+                ? visSamples.map((sample, sampleIndex) => {
+                    if (!gateAppliesToSample(g, sample.id)) return null;
+                    const pos = ensureSampleGateLabelPos(g, sample.id);
+                    return {
+                      text: gatePercentTextForSample(g, sample.id),
+                      px: x + xs.fwd(pos.x),
+                      py: y + sampleIndex * sampleHeight + sampleHeight * clamp01(pos.yFrac, 0.38)
+                    };
+                  }).filter(Boolean)
+                : (() => {
+                    const pos = ensureGateLabelPos(g);
+                    return [{ text: gatePercentText(g), px: x + xs.fwd(pos.x), py: y + h * clamp01(pos.yFrac, 0.1) }];
+                  })();
+            labelItems.forEach(item => {
+                const {text, px, py} = item;
+                if (!isFinite(px) || !isFinite(py)) return;
+                drawPdfGateLabel(pdf, text, px, py, isLightMode, 10);
+            });
+        }
+    });
+}
+
+function drawGatesPDF(pdf, area, isLightMode, options = {}) {
+    const {x,y,w,h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const gateGray = { r: 70, g: 74, b: 80 };
+    pdf.setLineWidth(1.1);
+
+    gates.forEach(g => {
+        if (!gateVisibleForCurrentAxes(g)) return; 
+        const strokeColor = gateEffectiveSampleId(g) ? hexToRgb(gateColor(g)) : (isLightMode ? gateGray : hexToRgb(getComputedStyle(document.body).getPropertyValue('--gate-stroke')));
+        pdf.setDrawColor(strokeColor.r, strokeColor.g, strokeColor.b);
+        if (g.type === 'rect') {
+            const {x0,y0,x1,y1} = g.def; const rx = x + xs.fwd(Math.min(x0,x1)); const ry = y + h - ys.fwd(Math.max(y0,y1)); const rw = Math.abs(xs.fwd(x1) - xs.fwd(x0)); const rh = Math.abs(ys.fwd(y1) - ys.fwd(y0));
+            pdf.rect(rx, ry, rw, rh, 'S');
+        } else if (g.type === 'poly') {
+            const pts = g.def.pts; if (pts.length < 2) return;
+            const first = pts[0];
+            let px0 = x + xs.fwd(first.x);
+            let py0 = y + h - ys.fwd(first.y);
+            for (let i = 1; i < pts.length; i++) {
+                const p = pts[i];
+                const px1 = x + xs.fwd(p.x);
+                const py1 = y + h - ys.fwd(p.y);
+                pdf.line(px0, py0, px1, py1);
+                px0 = px1; py0 = py1;
+            }
+            const fx = x + xs.fwd(first.x);
+            const fy = y + h - ys.fwd(first.y);
+            pdf.line(px0, py0, fx, fy);
+        } else if (g.type === 'ellipse') {
+            drawEllipsePDF(pdf, g, area);
+        }
+    });
+    if (!options.showPercent) return;
+
+    recalculateGatePercentCache();
+    pdf.setFontSize(10);
+    gates.forEach(g => {
+        if (!gateVisibleForCurrentAxes(g)) return;
+        const pos = ensureGateLabelPos(g);
+        const px = x + xs.fwd(pos.x);
+        const py = y + h - ys.fwd(pos.y);
+        if (!isFinite(px) || !isFinite(py)) return;
+        const text = gatePercentText(g);
+        drawPdfGateLabel(pdf, text, px, py, isLightMode, 10);
+    });
+}
+
+ui.exportCSV.addEventListener('click', ()=>{
+  const rows = [];
+  rows.push(['sample', ...(samples[0]?.params||[])].map(csvEscape).join(','));
+  const filt = makePopulationFilter(currentPopulationId);
+  visibleSamples().forEach(s=>{
+    const n=s.n; 
+    for(let k=0;k<n;k++){ 
+      if(!filt(s,k)) continue; 
+      const vals=s.params.map((p,pi)=> s.data[pi][k]); 
+      rows.push([s.name, ...vals].map(csvEscape).join(','));
+    }
+  });
+  const blob = new Blob([rows.join('\r\n')],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='population.csv'; a.click(); URL.revokeObjectURL(url);
+});
+
+const STATS_EXPORT_METRICS = [
+    {id: 'events', label: 'Events', header: 'events'},
+    {id: 'mean', label: 'Mean', perParam: true},
+    {id: 'median', label: 'Median', perParam: true},
+    {id: 'sd', label: 'Standard deviation', perParam: true},
+    {id: 'percent_parent', label: '% parent', header: '%parent'},
+    {id: 'percent_total', label: '% total', header: '%total'}
+];
+
+function allParameterNames() {
+    const params = new Set();
+    samples.forEach(s => (s.params || []).forEach(p => params.add(p)));
+    return Array.from(params);
+}
+
+function populateCheckboxList(container, options) {
+    container.innerHTML = '';
+    options.forEach(opt => {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = opt.value;
+        input.checked = opt.checked !== false;
+        label.append(input, document.createTextNode(opt.label));
+        container.append(label);
+    });
+}
+
+function checkedValues(container) {
+    return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value);
+}
+
+function openStatsExportModal() {
+    if (!visibleSamples().length) { alert('Load and show at least one sample before exporting statistics.'); return; }
+    const params = allParameterNames();
+    if (!params.length) { alert('No parameters are available to export.'); return; }
+    populateCheckboxList(ui.statsGateOptions, [
+        {value: '', label: 'All Events'},
+        ...gates.map(g => ({value: g.id, label: g.name}))
+    ]);
+    populateCheckboxList(ui.statsParamOptions, params.map(p => ({value: p, label: p})));
+    populateCheckboxList(ui.statsMetricOptions, STATS_EXPORT_METRICS.map(m => ({value: m.id, label: m.label})));
+    ui.statsExportModal.classList.add('visible');
+}
+
+function exportStatsCSV(gateIds, paramNames, metricIds) {
+    const metricSet = new Set(metricIds);
+    const selectedGates = [{id: null, name: 'All Events'}, ...gates].filter(g => gateIds.includes(g.id || ''));
+    const header = ['sample', 'gate'];
+    STATS_EXPORT_METRICS.forEach(metric => {
+        if (!metricSet.has(metric.id)) return;
+        if (metric.perParam) paramNames.forEach(p => header.push(`${metric.id}_${p}`));
+        else header.push(metric.header);
+    });
+    if (header.length <= 2) { alert('Choose at least one statistic or parameter-backed statistic to export.'); return; }
+
+    const rows = [header.map(csvEscape).join(',')];
+    visibleSamples().forEach(s => {
+        const totalEvents = s.n;
+        selectedGates.forEach(g => {
+            if (g.id && !gateAppliesToSample(g, s.id)) return;
+            const gateFilter = makePopulationFilter(g.id);
+            const gateRecord = g.id ? gates.find(gate => gate.id === g.id) : null;
+            const parentFilter = gateRecord ? makePopulationFilter(gateRecord.parentId) : () => true;
+            const valuesByParam = new Map(paramNames.map(p => [p, []]));
+            let parentCount = 0;
+            let eventCount = 0;
+
+            for (let i = 0; i < s.n; i++) {
+                if (parentFilter(s, i)) parentCount++;
+                if (!gateFilter(s, i)) continue;
+                eventCount++;
+                paramNames.forEach(p => {
+                    const v = valueOf(s, p, i);
+                    if (isFinite(v)) valuesByParam.get(p).push(v);
+                });
+            }
+
+            const statsByParam = new Map(paramNames.map(p => [p, calculateStats(valuesByParam.get(p))]));
+            const percParent = parentCount > 0 ? (eventCount / parentCount * 100).toFixed(2) : 'N/A';
+            const percTotal = totalEvents > 0 ? (eventCount / totalEvents * 100).toFixed(2) : '0.00';
+            const row = [s.name, g.name];
+            STATS_EXPORT_METRICS.forEach(metric => {
+                if (!metricSet.has(metric.id)) return;
+                if (metric.id === 'events') row.push(eventCount);
+                else if (metric.id === 'percent_parent') row.push(percParent);
+                else if (metric.id === 'percent_total') row.push(percTotal);
+                else paramNames.forEach(p => row.push(statsByParam.get(p)[metric.id]));
+            });
+            rows.push(row.map(csvEscape).join(','));
+        });
+    });
+
+    const blob = new Blob([rows.join('\r\n')], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'statistics.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+ui.exportStats.addEventListener('click', openStatsExportModal);
+ui.cancelStatsExport.addEventListener('click', () => ui.statsExportModal.classList.remove('visible'));
+ui.confirmStatsExport.addEventListener('click', () => {
+    const gateIds = checkedValues(ui.statsGateOptions);
+    const paramNames = checkedValues(ui.statsParamOptions);
+    const metricIds = checkedValues(ui.statsMetricOptions);
+    if (!gateIds.length) { alert('Choose at least one gate to export.'); return; }
+    if (!metricIds.length) { alert('Choose at least one statistic to export.'); return; }
+    exportStatsCSV(gateIds, paramNames, metricIds);
+    ui.statsExportModal.classList.remove('visible');
+});
+
+ui.saveWorkspace.addEventListener('click', () => {
+    const workspace = {
+        samples: samples.map(s => ({...s, data: Array.from(s.data.map(d => Array.from(d)))})), 
+        gates, axis, visibleSampleIds: Array.from(visibleSampleIds), currentPopulationId, gridCols: ui.gridCols.value,
+    };
+    const blob = new Blob([JSON.stringify(workspace, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'workspace.json'; a.click(); URL.revokeObjectURL(url);
+});
+
+ui.loadWorkspace.addEventListener('click', () => ui.loadWorkspaceInput.click());
+ui.loadWorkspaceInput.addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const workspace = JSON.parse(event.target.result);
+            samples = workspace.samples.map(s => ({...s, data: s.data.map(d => Float32Array.from(d))}));
+            gates = workspace.gates; axis = workspace.axis;
+            gates.forEach(normalizeGate);
+            visibleSampleIds = new Set(workspace.visibleSampleIds); currentPopulationId = workspace.currentPopulationId;
+            markGatePercentDirty();
+            refreshFileList(); refreshParamOptions(); rebuildGateTree();
+            ui.xParam.value = axis.xParam; ui.yParam.value = axis.yParam; ui.xScale.value = axis.xScale; ui.yScale.value = axis.yScale;
+            ui.xMin.value = axis.xMin; ui.xMax.value = axis.xMax; ui.yMin.value = axis.yMin; ui.yMax.value = axis.yMax;
+            if (workspace.gridCols) ui.gridCols.value = workspace.gridCols;
+            syncToolAvailability();
+            render();
+        } catch (err) { alert('Failed to load workspace file.'); console.error(err); }
+    };
+    reader.readAsText(file); e.target.value = '';
+});
+
+// ---------------------------- Parsers & Helpers ----------------------------
+function csvEscape(value) {
+    const str = String(value ?? '');
+    if (/[",\r\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+    return str;
+}
+function toSuperscript(exp) {
+    const map = {'-':'⁻','+':'⁺','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+    return String(exp).split('').map(ch => map[ch] || ch).join('');
+}
+function calculateStats(arr) {
+    if (arr.length === 0) return { mean: 'N/A', median: 'N/A', sd: 'N/A' };
+    const sum = arr.reduce((a, b) => a + b, 0);
+    const mean = sum / arr.length;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    const sd = Math.sqrt(arr.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / arr.length);
+    return { mean: mean.toExponential(2), median: median.toExponential(2), sd: sd.toExponential(2) };
+}
+
+function calculateHistogram(data, min, max, scale, steps) {
+    if (data.length === 0) return [];
+    const bins = new Uint32Array(steps);
+    let transform, detransform;
+    if (scale === 'log') {
+        min = Math.log10(min > 0 ? min : 1e-1); max = Math.log10(max);
+        transform = (v) => Math.log10(v); detransform = (v) => Math.pow(10, v);
+    } else { transform = (v) => v; detransform = (v) => v; }
+    const range = max - min; if (range <= 0) return [];
+    const binWidth = range / steps;
+    for (const val of data) {
+        if (scale === 'log' && val <= 0) continue;
+        const tVal = transform(val);
+        if (tVal >= min && tVal < max) {
+            const binIndex = Math.floor((tVal - min) / binWidth);
+            bins[binIndex]++;
+        }
+    }
+    const smoothedBins = smoothHistogramBins(bins, 1.25);
+    const points = [];
+    for (let i = 0; i < steps; i++) { const binCenter = min + (i + 0.5) * binWidth; points.push({ x: detransform(binCenter), y: smoothedBins[i] }); }
+    return points;
+}
+
+function smoothHistogramBins(bins, sigma = 1.25) {
+    const radius = Math.max(2, Math.ceil(sigma * 3));
+    const kernel = [];
+    for (let i = -radius; i <= radius; i++) kernel.push(Math.exp(-(i * i) / (2 * sigma * sigma)));
+    const out = new Float64Array(bins.length);
+    for (let i = 0; i < bins.length; i++) {
+        let sum = 0;
+        let weight = 0;
+        for (let k = -radius; k <= radius; k++) {
+            const idx = i + k;
+            if (idx < 0 || idx >= bins.length) continue;
+            const w = kernel[k + radius];
+            sum += bins[idx] * w;
+            weight += w;
+        }
+        out[i] = weight > 0 ? sum / weight : bins[i];
+    }
+    return out;
+}
+
+async function parseCSV(buffer, name){
+  const txt = new TextDecoder('utf-8').decode(buffer);
+  const lines = txt.split(/\r?\n/).filter(Boolean);
+  const header = lines[0].split(',');
+  const cols = header.length;
+  const arrays = Array.from({length:cols}, ()=>[]);
+  for(let i=1;i<lines.length;i++){
+    const parts = lines[i].split(','); if(parts.length!==cols) continue;
+    for(let c=0;c<cols;c++) arrays[c].push(parseFloat(parts[c]));
+  }
+  return { name, params: header, data: arrays.map(a=> Float32Array.from(a)), n: arrays[0].length };
+}
+
+async function parseFCS(buffer, name){
+  const ascii = (off,len)=> new TextDecoder('ascii').decode(new Uint8Array(buffer, off, len));
+  const head = ascii(0,6);
+  if(!head.startsWith('FCS')) throw new Error('Not an FCS file');
+  const hTextStart = parseInt(ascii(10,8).trim());
+  const hTextEnd   = parseInt(ascii(18,8).trim());
+  const hDataStart = parseInt(ascii(26,8).trim());
+  const hDataEnd   = parseInt(ascii(34,8).trim());
+  const text = ascii(hTextStart, hTextEnd - hTextStart + 1);
+  const meta = parseText(text); 
+  const par = +meta["$PAR"];
+  const tot = +meta["$TOT"];
+  const dtype = (meta["$DATATYPE"] || "F").trim().toUpperCase();
+  const mode = (meta["$MODE"] || "L").trim().toUpperCase();
+  const byteord = (meta["$BYTEORD"] || "4,3,2,1").trim();
+  const little = byteord === '1,2,3,4';
+  const dStart = meta["$BEGINDATA"] ? parseInt(meta["$BEGINDATA"]) : hDataStart;
+  const dEnd = meta["$ENDDATA"] ? parseInt(meta["$ENDDATA"]) : hDataEnd;
+  if(!(Number.isFinite(dStart) && Number.isFinite(dEnd) && dEnd > dStart)) { throw new Error("Invalid data offsets"); }
+  const params = [];
+  for (let i=1;i<=par;i++){ params.push( (meta[`$P${i}S`] || meta[`$P${i}N`] || `P${i}`).toString() ); }
+  const view = new DataView(buffer, dStart, dEnd - dStart + 1);
+  const arrays = Array.from({length:par}, ()=> new Float32Array(tot));
+  const bytesPer = [];
+  if (dtype === "F") for(let i=0;i<par;i++) bytesPer.push(4);
+  else if (dtype === "D") for(let i=0;i<par;i++) bytesPer.push(8);
+  else if (dtype === "I") for(let i=1;i<=par;i++) bytesPer.push(parseInt(meta[`$P${i}B`] || "16") / 8);
+  else throw new Error("Unsupported $DATATYPE " + dtype);
+  function readVal(off, p){
+    const b = bytesPer[p];
+    if (dtype === "F") return view.getFloat32(off, little);
+    if (dtype === "D") return view.getFloat64(off, little);
+    if (b === 1)  return view.getUint8(off);
+    if (b === 2) return view.getUint16(off, little);
+    if (b === 4) return view.getUint32(off, little);
+    if (b === 8) return Number(view.getBigUint64(off, little));
+    let v = 0;
+    if (little) for (let k=b-1;k>=0;k--) v = (v<<8) | view.getUint8(off+k);
+    else for (let k=0;k<b;k++) v = (v<<8) | view.getUint8(off+k);
+    return v;
+  }
+  const bytesPerEvent = bytesPer.reduce((a,b)=>a+b,0);
+  if (mode === "L"){
+    let off = 0;
+    for (let i=0;i<tot;i++){
+      let pOff = off;
+      for (let p=0;p<par;p++){ arrays[p][i] = readVal(pOff, p); pOff += bytesPer[p]; }
+      off += bytesPerEvent;
+    }
+  } else if (mode === "C"){
+    let base = 0;
+    for (let p=0;p<par;p++){
+      let off = base, step = bytesPer[p];
+      for (let i=0;i<tot;i++){ arrays[p][i] = readVal(off, p); off += step; }
+      base += step * tot;
+    }
+  } else { throw new Error("Unsupported $MODE " + mode); }
+  return { name, params, data: arrays, n: tot };
+}
+
+function parseText(txt){
+  const delim = txt[0];
+  const body  = txt.slice(1);
+  const parts = [];
+  let cur = "";
+  for (let i=0;i<body.length;i++){
+    const ch = body[i];
+    if (ch === delim){
+      if (body[i+1] === delim){ cur += delim; i++; }
+      else { parts.push(cur); cur = ""; }
+    } else cur += ch;
+  }
+  const meta = {};
+  for (let i=0;i+1<parts.length;i+=2){ meta[parts[i].toUpperCase()] = parts[i+1]; }
+  return meta;
+}
+
+function hexToRGBA(hex, a){
+  const h = hex.replace('#',''); const bigint=parseInt(h,16); const r=(bigint>>16)&255, g=(bigint>>8)&255, b=bigint&255; return `rgba(${r},${g},${b},${a})`;
+}
+
+function hexToRgb(hex) {
+  if (!hex) return {r:0, g:0, b:0};
+  const h = hex.replace('#','');
+  const bigint = parseInt(h, 16);
+  return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+}
+
+setAxisFromUI();
+refreshFileList();
+rebuildGateTree();
+try {
+    setTool('select');
+    syncToolAvailability();
+} catch (err) {
+    console.error('Tool initialization failed', err);
+}
+if ('ResizeObserver' in window) {
+    const plotResizeObserver = new ResizeObserver(() => {
+        if (syncCanvasResolution()) render();
+    });
+    plotResizeObserver.observe(ui.plot.parentElement);
+} else {
+    window.addEventListener('resize', () => { if (syncCanvasResolution()) render(); });
+}
+render();
+</script>
+</body>
+</html>
