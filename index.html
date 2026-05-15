@@ -93,6 +93,7 @@
     .indent{margin-left:18px}
     .stats{font-size:13px;line-height:1.55}
     .emptyState{font-size:12px;color:var(--muted);padding:8px;border:1px dashed var(--input-border);border-radius:8px}
+    .emptyStateAction{height:26px;margin-top:8px;padding:0 10px;border-radius:7px;font-size:12px;font-weight:500}
     
     canvas{background:var(--canvas-bg);border:0;border-radius:0;display:block; transition: background-color 0.3s;max-width:100%;}
     .plotWrap{position:relative;width:fit-content;max-width:100%}
@@ -308,7 +309,10 @@
     <section class="col left">
       <h3>Files</h3>
       <div id="fileList" class="files"></div>
-      <div id="filesEmptyState" class="emptyState">No files loaded yet. Use "Add Files" to import FCS/CSV data.</div>
+      <div id="filesEmptyState" class="emptyState">
+        No files loaded yet. Use "Add Files" to import FCS/CSV data.
+        <button id="loadExampleData" class="secondary emptyStateAction" type="button">Example Data</button>
+      </div>
       <div class="sep"></div>
       <h3>Data</h3>
       
@@ -459,7 +463,7 @@ const ui = {
   resetView: byId('resetView'),
   plot: byId('plot'), xlabel: byId('xlabel'), ylabel: byId('ylabel'), cursorCoords: byId('cursorCoords'),
   gateTree: byId('gateTree'), statsBox: byId('statsBox'),
-  filesEmptyState: byId('filesEmptyState'), gatesEmptyState: byId('gatesEmptyState'),
+  filesEmptyState: byId('filesEmptyState'), loadExampleData: byId('loadExampleData'), gatesEmptyState: byId('gatesEmptyState'),
   workspaceMenuButton: byId('workspaceMenuButton'), workspaceMenu: byId('workspaceMenu'),
   exportMenuButton: byId('exportMenuButton'), exportMenu: byId('exportMenu'),
   exportPNG: byId('menuExportPNG'), openPdfModal: byId('menuExportPDF'), exportCSV: byId('menuExportCSV'), exportStats: byId('menuExportStats'),
@@ -499,6 +503,12 @@ let labelDragCellArea = null;
 let labelDragSampleId = null;
 let gateDragState = null;
 let activeAxisPopover = null;
+const EXAMPLE_DATA_FILES = [
+    'example_data/03-Well-B1.fcs',
+    'example_data/03-Well-B2.fcs',
+    'example_data/03-Well-B3.fcs',
+    'example_data/03-Well-B4.fcs',
+];
 
 const idGen = (()=>{let i=1;return ()=>`G${i++}`})();
 function setTool(t){
@@ -566,33 +576,62 @@ function syncToolAvailability() {
 }
 
 // ---------------------------- FCS / CSV Loader ----------------------------
-ui.fileInput.addEventListener('change', async (e)=>{
-  const files = [...e.target.files];
-  for (let i=0;i<files.length;i++) {
-    const f = files[i];
-    try{
-      const ext = f.name.toLowerCase().split('.').pop();
-      const buffer = await f.arrayBuffer();
-      let sample;
-      if (ext==='csv') sample = await parseCSV(buffer, f.name);
-      else sample = await parseFCS(buffer, f.name);
-      
-      sample.name = sample.name.replace(/\.(fcs|csv)$/i, '');
-      sample.id = crypto.randomUUID();
-      sample.color = palette[samples.length % palette.length];
-      samples.push(sample);
-      visibleSampleIds.add(sample.id);
-    }catch(err){
-      alert(`Failed to load ${f.name}: ${err.message}`);
-      console.error(err);
-    }
-  }
+async function addSampleFromBuffer(buffer, name) {
+  const ext = name.toLowerCase().split('.').pop();
+  let sample;
+  if (ext==='csv') sample = await parseCSV(buffer, name);
+  else sample = await parseFCS(buffer, name);
+
+  sample.name = sample.name.replace(/\.(fcs|csv)$/i, '');
+  sample.id = crypto.randomUUID();
+  sample.color = palette[samples.length % palette.length];
+  samples.push(sample);
+  visibleSampleIds.add(sample.id);
+}
+function finishSampleLoad() {
   refreshFileList();
   refreshParamOptions();
   markGatePercentDirty();
   ui.xParam.dispatchEvent(new Event('change'));
   ui.yParam.dispatchEvent(new Event('change'));
+}
+async function loadSelectedFiles(files) {
+  for (let i=0;i<files.length;i++) {
+    const f = files[i];
+    try{
+      const buffer = await f.arrayBuffer();
+      await addSampleFromBuffer(buffer, f.name);
+    }catch(err){
+      alert(`Failed to load ${f.name}: ${err.message}`);
+      console.error(err);
+    }
+  }
+  finishSampleLoad();
+}
+async function loadExampleData() {
+  ui.loadExampleData.disabled = true;
+  ui.loadExampleData.textContent = 'Loading...';
+  try {
+    for (const path of EXAMPLE_DATA_FILES) {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`Could not fetch ${path}`);
+      const buffer = await response.arrayBuffer();
+      await addSampleFromBuffer(buffer, path.split('/').pop());
+    }
+    finishSampleLoad();
+  } catch (err) {
+    alert(`Failed to load example data: ${err.message}`);
+    console.error(err);
+  } finally {
+    ui.loadExampleData.disabled = false;
+    ui.loadExampleData.textContent = 'Example Data';
+  }
+}
+ui.fileInput.addEventListener('change', async (e)=>{
+  await loadSelectedFiles([...e.target.files]);
+  e.target.value = '';
 });
+ui.loadExampleData.addEventListener('click', loadExampleData);
 
 function refreshFileList(){
   ui.fileList.innerHTML = '';
