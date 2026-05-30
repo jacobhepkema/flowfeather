@@ -28,7 +28,9 @@
     .brandIcon{width:24px;height:24px;display:block}
     .brandIcon .feather-group{transform-origin:12px 12px;transform-box:fill-box}
     .brandIcon:hover .feather-group{animation:brandIconSpin 1.2s linear infinite}
-    .brandIcon .feather-line{stroke:#fff;stroke-opacity:.82}
+    .brandIcon .feather-outline, .brandIcon .feather-line{stroke:#1d1d1f;stroke-opacity:.78}
+    body[data-theme="dark"] .brandIcon .feather-outline,
+    body[data-theme="dark"] .brandIcon .feather-line{stroke:#fff;stroke-opacity:.84}
     @keyframes brandIconSpin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
     header .btns{display:flex;gap:14px;flex-wrap:wrap; align-items: center;}
     header .btns label{margin:0}
@@ -273,9 +275,9 @@
             </linearGradient>
           </defs>
           <g class="feather-group" stroke-linecap="round" stroke-linejoin="round">
-            <path fill="url(#brandFeatherGradient)" d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
-            <path class="feather-line" fill="none" stroke-width="1.45" d="M16 8 2 22" />
-            <path class="feather-line" fill="none" stroke-width="1.45" d="M17.5 15H9" />
+            <path class="feather-outline" fill="url(#brandFeatherGradient)" stroke-width="1.35" d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+            <path class="feather-line" fill="none" stroke-width="1.55" d="M16 8 2 22" />
+            <path class="feather-line" fill="none" stroke-width="1.55" d="M17.5 15H9" />
           </g>
         </svg>
         <h3 style="margin:0; margin-right: 20px;">Feather Flow</h3>

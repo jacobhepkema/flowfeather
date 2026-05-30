@@ -7,7 +7,11 @@
       <stop offset="1" stop-color="#d7f6ff" />
     </linearGradient>
   </defs>
-  <path fill="url(#featherGradient)" d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
-  <path fill="none" stroke="#ffffff" stroke-opacity=".82" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" d="M16 8 2 22" />
-  <path fill="none" stroke="#ffffff" stroke-opacity=".82" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" d="M17.5 15H9" />
+  <style>
+    .feather-stroke{stroke:#1d1d1f;stroke-opacity:.78}
+    @media (prefers-color-scheme: dark){.feather-stroke{stroke:#fff;stroke-opacity:.84}}
+  </style>
+  <path class="feather-stroke" fill="url(#featherGradient)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+  <path class="feather-stroke" fill="none" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" d="M16 8 2 22" />
+  <path class="feather-stroke" fill="none" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" d="M17.5 15H9" />
 </svg>
