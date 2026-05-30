@@ -25,11 +25,10 @@
     
     header{grid-column:1/4;display:flex;align-items:center;justify-content:space-between;background:color-mix(in srgb, var(--panel) 94%, transparent);border:1px solid color-mix(in srgb, var(--border-color) 86%, transparent);border-radius:16px;padding:10px 12px;position:sticky;top:12px;z-index:20;box-shadow:0 18px 48px rgba(12, 18, 28, 0.08);backdrop-filter:blur(18px)}
     .brand{display:flex;align-items:center;gap:10px;min-width:max-content}
-    .brandIcon{width:24px;height:24px;display:block;color:var(--accent)}
-    body[data-theme="dark"] .brandIcon rect{fill:#0b0e16}
-    body[data-theme="dark"] .brandIcon .feather-group{stroke:#e7ecf3}
+    .brandIcon{width:24px;height:24px;display:block}
     .brandIcon .feather-group{transform-origin:12px 12px;transform-box:fill-box}
     .brandIcon:hover .feather-group{animation:brandIconSpin 1.2s linear infinite}
+    .brandIcon .feather-line{stroke:#fff;stroke-opacity:.82}
     @keyframes brandIconSpin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
     header .btns{display:flex;gap:14px;flex-wrap:wrap; align-items: center;}
     header .btns label{margin:0}
@@ -61,11 +60,13 @@
     input[type="number"]{appearance:textfield;-moz-appearance:textfield}
     
     .files{display:flex;flex-direction:column;gap:1px}
+    .files.is-drop-target, .emptyState.is-drop-target{outline:2px solid color-mix(in srgb, var(--accent) 55%, transparent);outline-offset:3px;background:var(--hover-bg)}
     .fileRow{display:flex;align-items:center;gap:7px;padding:2px 5px;border-radius:6px; cursor: grab;}
     .fileRow:hover{background:var(--hover-bg)}
     .fileRow.dragging { opacity: 0.5; }
-    .legendDot{width:12px;height:12px;border-radius:50%; cursor:pointer; border: 2px solid transparent;}
+    .legendDot{width:12px;height:12px;min-width:12px;flex:0 0 12px;border-radius:50%; cursor:pointer; border: 2px solid transparent;}
     .legendDot:hover{border-color: var(--accent);}
+    .fileName{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     
     .ctrlRow{display:grid;grid-template-columns:1fr 1fr; gap:8px}
     .rangeRow{display:grid;grid-template-columns:1fr 1fr 32px;gap:8px;align-items:end}
@@ -206,6 +207,9 @@
       <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
         <input type="checkbox" id="pdfAllEvents" checked> Save All Events (Slow)
       </label>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <input type="checkbox" id="pdfDarkBackground"> Dark background
+      </label>
       <div class="modal-footer">
         <button id="cancelPdfExport" class="secondary">Cancel</button>
         <button id="confirmPdfExport">Export</button>
@@ -246,6 +250,8 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button id="statsSelectAll" class="secondary" type="button">Select all</button>
+        <button id="statsSelectNone" class="secondary" type="button">Unselect all</button>
         <button id="cancelStatsExport" class="secondary">Cancel</button>
         <button id="confirmStatsExport">Export</button>
       </div>
@@ -258,11 +264,18 @@
     <header>
       <div class="brand">
         <svg class="brandIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-          <rect width="24" height="24" fill="#ffffff" />
-          <g class="feather-group" fill="none" stroke="#2c3e50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
-            <line x1="16" y1="8" x2="2" y2="22" />
-            <line x1="17.5" y1="15" x2="9" y2="15" />
+          <defs>
+            <linearGradient id="brandFeatherGradient" x1="3.1" y1="21.4" x2="20.9" y2="2.6" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#1238ff" />
+              <stop offset="0.42" stop-color="#0aa8ff" />
+              <stop offset="0.72" stop-color="#24e0c7" />
+              <stop offset="1" stop-color="#d7f6ff" />
+            </linearGradient>
+          </defs>
+          <g class="feather-group" stroke-linecap="round" stroke-linejoin="round">
+            <path fill="url(#brandFeatherGradient)" d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+            <path class="feather-line" fill="none" stroke-width="1.45" d="M16 8 2 22" />
+            <path class="feather-line" fill="none" stroke-width="1.45" d="M17.5 15H9" />
           </g>
         </svg>
         <h3 style="margin:0; margin-right: 20px;">Feather Flow</h3>
@@ -402,10 +415,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l12 8-6 1.5 4 6-2.5 1.5-4-6-3.5 4z"/></svg>
         </button>
         <button class="gateToolButton" data-tool="rect" title="Rectangle (R)" aria-label="Rectangle gate">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="1.5" stroke-dasharray="4 3"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="1.5"/></svg>
         </button>
         <button class="gateToolButton" data-tool="ellipse" title="Ellipse (E)" aria-label="Ellipse gate">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="7.5" ry="6.2" stroke-dasharray="4 3"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="7.5" ry="6.2"/></svg>
         </button>
         <button class="gateToolButton" data-tool="poly" title="Polygon (P)" aria-label="Polygon gate">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5 19 9.7 16.2 18h-8.4L5 9.7z"/></svg>
@@ -471,11 +484,11 @@ const ui = {
   themeToggle: byId('themeToggle'),
   saveWorkspace: byId('saveWorkspace'), loadWorkspace: byId('loadWorkspace'), loadWorkspaceInput: byId('loadWorkspaceInput'),
   pdfExportModal: byId('pdfExportModal'), confirmPdfExport: byId('confirmPdfExport'), cancelPdfExport: byId('cancelPdfExport'),
-  pdfWidth: byId('pdfWidth'), pdfHeight: byId('pdfHeight'), pdfShowGates: byId('pdfShowGates'), pdfShowSampleNames: byId('pdfShowSampleNames'), pdfShowPercent: byId('pdfShowPercent'), pdfAllEvents: byId('pdfAllEvents'),
+  pdfWidth: byId('pdfWidth'), pdfHeight: byId('pdfHeight'), pdfShowGates: byId('pdfShowGates'), pdfShowSampleNames: byId('pdfShowSampleNames'), pdfShowPercent: byId('pdfShowPercent'), pdfAllEvents: byId('pdfAllEvents'), pdfDarkBackground: byId('pdfDarkBackground'),
   pdfXLabel: byId('pdfXLabel'), pdfYLabel: byId('pdfYLabel'),
   pngExportModal: byId('pngExportModal'), confirmPngExport: byId('confirmPngExport'), cancelPngExport: byId('cancelPngExport'), pngScale: byId('pngScale'), pngShowPercent: byId('pngShowPercent'),
   statsExportModal: byId('statsExportModal'), statsGateOptions: byId('statsGateOptions'), statsParamOptions: byId('statsParamOptions'), statsMetricOptions: byId('statsMetricOptions'),
-  cancelStatsExport: byId('cancelStatsExport'), confirmStatsExport: byId('confirmStatsExport'),
+  statsSelectAll: byId('statsSelectAll'), statsSelectNone: byId('statsSelectNone'), cancelStatsExport: byId('cancelStatsExport'), confirmStatsExport: byId('confirmStatsExport'),
   gateApplyMenu: byId('gateApplyMenu'),
   axisPopover: byId('axisPopover'), axisPopoverTitle: byId('axisPopoverTitle'), axisPopoverClose: byId('axisPopoverClose'),
   axisPopoverParam: byId('axisPopoverParam'), axisPopoverScale: byId('axisPopoverScale'), axisPopoverMin: byId('axisPopoverMin'), axisPopoverMax: byId('axisPopoverMax'),
@@ -498,6 +511,7 @@ const paramSettings = {};
 let gatePercentCache = new Map();
 let gatePercentBySampleCache = new Map();
 let gatePercentCacheDirty = true;
+const pdfLabelCache = new Map();
 let labelDragGateId = null;
 let labelDragCellArea = null;
 let labelDragSampleId = null;
@@ -609,18 +623,22 @@ async function loadSelectedFiles(files) {
   finishSampleLoad();
 }
 async function loadExampleData() {
+  if (window.location.protocol === 'file:') {
+    alert('Example data cannot be loaded when opening index.html directly from disk. Open Feather Flow through GitHub Pages or run a local server, then use the http://127.0.0.1 URL.');
+    return;
+  }
   ui.loadExampleData.disabled = true;
   ui.loadExampleData.textContent = 'Loading...';
   try {
     for (const path of EXAMPLE_DATA_FILES) {
-      const response = await fetch(path);
-      if (!response.ok) throw new Error(`Could not fetch ${path}`);
+      const response = await fetch(new URL(path, window.location.href));
+      if (!response.ok) throw new Error(`Could not fetch ${path} (${response.status})`);
       const buffer = await response.arrayBuffer();
       await addSampleFromBuffer(buffer, path.split('/').pop());
     }
     finishSampleLoad();
   } catch (err) {
-    alert(`Failed to load example data: ${err.message}`);
+    alert(`Failed to load example data: ${err.message}. If this is hosted, make sure the example_data folder was committed and pushed.`);
     console.error(err);
   } finally {
     ui.loadExampleData.disabled = false;
@@ -654,7 +672,7 @@ function refreshFileList(){
 
     const name = document.createElement('span');
     name.textContent = s.name;
-    name.style.flex = '1';
+    name.className = 'fileName';
     name.contentEditable = true;
     name.style.cursor = 'text';
     
@@ -694,18 +712,55 @@ function refreshFileList(){
 
 // Drag and Drop
 let draggedId = null;
-ui.fileList.addEventListener('dragstart', e => { draggedId = e.target.dataset.sampleId; e.target.classList.add('dragging'); });
-ui.fileList.addEventListener('dragend', e => { e.target.classList.remove('dragging'); });
+function dragHasFiles(e) {
+    return Array.from(e.dataTransfer?.types || []).includes('Files');
+}
+function setFileDropTarget(active) {
+    ui.fileList.classList.toggle('is-drop-target', active);
+    ui.filesEmptyState.classList.toggle('is-drop-target', active);
+}
+async function handleDroppedFiles(e) {
+    const files = Array.from(e.dataTransfer?.files || []).filter(file => /\.(fcs|csv)$/i.test(file.name));
+    if (!files.length) return;
+    await loadSelectedFiles(files);
+}
+ui.fileList.addEventListener('dragstart', e => {
+    const row = e.target.closest('.fileRow');
+    if (!row) return;
+    draggedId = row.dataset.sampleId;
+    row.classList.add('dragging');
+});
+ui.fileList.addEventListener('dragend', e => {
+    e.target.closest('.fileRow')?.classList.remove('dragging');
+    draggedId = null;
+    setFileDropTarget(false);
+});
 ui.fileList.addEventListener('dragover', e => {
     e.preventDefault();
+    if (dragHasFiles(e)) {
+        e.dataTransfer.dropEffect = 'copy';
+        setFileDropTarget(true);
+        return;
+    }
     const afterElement = getDragAfterElement(ui.fileList, e.clientY);
     const draggable = document.querySelector('.dragging');
+    if (!draggable) return;
     if (afterElement == null) ui.fileList.appendChild(draggable);
     else ui.fileList.insertBefore(draggable, afterElement);
 });
-ui.fileList.addEventListener('drop', e => {
+ui.fileList.addEventListener('dragleave', e => {
+    if (!ui.fileList.contains(e.relatedTarget) && !ui.filesEmptyState.contains(e.relatedTarget)) setFileDropTarget(false);
+});
+ui.fileList.addEventListener('drop', async e => {
     e.preventDefault();
+    setFileDropTarget(false);
+    if (dragHasFiles(e)) {
+        await handleDroppedFiles(e);
+        return;
+    }
+    if (!draggedId) return;
     const fromIndex = samples.findIndex(s => s.id === draggedId);
+    if (fromIndex < 0) return;
     const afterElement = getDragAfterElement(ui.fileList, e.clientY);
     const toId = afterElement ? afterElement.dataset.sampleId : null;
     const toIndex = toId ? samples.findIndex(s => s.id === toId) : samples.length;
@@ -713,6 +768,20 @@ ui.fileList.addEventListener('drop', e => {
     samples.splice(toIndex > fromIndex ? toIndex -1 : toIndex, 0, movedSample);
     refreshFileList();
     render();
+});
+ui.filesEmptyState.addEventListener('dragover', e => {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setFileDropTarget(true);
+});
+ui.filesEmptyState.addEventListener('dragleave', e => {
+    if (!ui.fileList.contains(e.relatedTarget) && !ui.filesEmptyState.contains(e.relatedTarget)) setFileDropTarget(false);
+});
+ui.filesEmptyState.addEventListener('drop', async e => {
+    e.preventDefault();
+    setFileDropTarget(false);
+    await handleDroppedFiles(e);
 });
 
 function getDragAfterElement(container, y) {
@@ -1779,6 +1848,20 @@ function applyGateToSample(gateId, sampleId) {
     render();
     return clone;
 }
+function applyGateToAll(gateId) {
+    const g = gates.find(g => g.id === gateId);
+    if (!g) return null;
+    const parent = g.parentId ? gates.find(parent => parent.id === g.parentId) : null;
+    if (parent && gateEffectiveSampleId(parent)) g.parentId = null;
+    g.sampleId = null;
+    g.excludeSampleIds = [];
+    g.name = baseGateName(g);
+    markGatePercentDirty();
+    refreshPopulationOptions();
+    rebuildGateTree();
+    render();
+    return g;
+}
 function transformPointForGate(point, g) {
     return {
       x: transformAxisValue(point.x, g.xScale || axis.xScale),
@@ -2178,6 +2261,14 @@ function openGateApplyMenu(gateId, clientX, clientY) {
     title.style.padding = '6px 8px';
     title.textContent = 'Apply to sample';
     ui.gateApplyMenu.append(title);
+    const allBtn = document.createElement('button');
+    allBtn.type = 'button';
+    allBtn.textContent = 'Apply to all samples';
+    allBtn.addEventListener('click', () => {
+        applyGateToAll(gateId);
+        closeGateApplyMenu();
+    });
+    ui.gateApplyMenu.append(allBtn);
     samples.forEach(sample => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -2928,16 +3019,17 @@ ui.confirmPngExport.addEventListener('click', safeHandler('PNG export', () => {
 }));
 
 ui.openPdfModal.addEventListener('click', safeHandler('Open PDF export', () => {
-    ui.pdfXLabel.value = axis.xParam || '';
-    const plotType = ui.plotType.value;
-    if (plotType.startsWith('hist')) ui.pdfYLabel.value = 'Percent of maximum';
-    else if (plotType.startsWith('scatter')) ui.pdfYLabel.value = axis.yParam || '';
-    else ui.pdfYLabel.value = '';
+    const key = pdfAxisLabelKey();
+    const labels = pdfLabelCache.get(key) || defaultPdfLabels();
+    ui.pdfXLabel.value = labels.x;
+    ui.pdfYLabel.value = labels.y;
+    ui.pdfDarkBackground.checked = document.body.dataset.theme !== 'light';
     ui.pdfExportModal.classList.add('visible');
 }));
 ui.cancelPdfExport.addEventListener('click', safeHandler('Close PDF export', () => ui.pdfExportModal.classList.remove('visible')));
 ui.confirmPdfExport.addEventListener('click', safeHandler('PDF export', () => {
     const cmToPt = 28.3465;
+    pdfLabelCache.set(pdfAxisLabelKey(), {x: ui.pdfXLabel.value, y: ui.pdfYLabel.value});
     const exportOptions = {
         width: +ui.pdfWidth.value * cmToPt,
         height: +ui.pdfHeight.value * cmToPt,
@@ -2945,6 +3037,7 @@ ui.confirmPdfExport.addEventListener('click', safeHandler('PDF export', () => {
         showSampleNames: ui.pdfShowSampleNames.checked,
         showPercent: ui.pdfShowPercent.checked,
         allEvents: ui.pdfAllEvents.checked,
+        darkBackground: ui.pdfDarkBackground.checked,
         xLabel: ui.pdfXLabel.value,
         yLabel: ui.pdfYLabel.value,
     };
@@ -2952,6 +3045,27 @@ ui.confirmPdfExport.addEventListener('click', safeHandler('PDF export', () => {
     ui.pdfExportModal.classList.remove('visible');
 }));
 
+function pdfAxisLabelKey() {
+    return `${ui.plotType.value}|${axis.xParam || ''}|${axis.yParam || ''}`;
+}
+function defaultPdfLabels() {
+    const plotType = ui.plotType.value;
+    return {
+      x: axis.xParam || '',
+      y: plotType.startsWith('hist') ? 'Percent of maximum' : (plotType.startsWith('scatter') ? (axis.yParam || '') : '')
+    };
+}
+function pdfThemeColor(role, isLightMode) {
+    if (isLightMode) return {r: 0, g: 0, b: 0};
+    const dark = {
+      text: {r: 231, g: 236, b: 243},
+      muted: {r: 180, g: 190, b: 204},
+      axis: {r: 211, g: 222, b: 248},
+      tick: {r: 154, g: 165, b: 177},
+      gate: {r: 211, g: 222, b: 248}
+    };
+    return dark[role] || dark.text;
+}
 function exportPDF(options){
   try {
     const { jsPDF } = window.jspdf || {};
@@ -2960,7 +3074,10 @@ function exportPDF(options){
     const exportPad = { l: 92, r: 22, t: 20, b: 82 };
     const area = { x: exportPad.l, y: exportPad.t, w: options.width - exportPad.l - exportPad.r, h: options.height - exportPad.t - exportPad.b };
     const plotType = ui.plotType.value;
-    const isLightMode = document.body.dataset.theme === 'light';
+    const isLightMode = !options.darkBackground;
+    const background = options.darkBackground ? {r: 11, g: 14, b: 22} : {r: 255, g: 255, b: 255};
+    pdf.setFillColor(background.r, background.g, background.b);
+    pdf.rect(0, 0, options.width, options.height, 'F');
     
     if (plotType === 'scatter') { drawAxesPDF(pdf, area, isLightMode); drawScatterPlotPDF(pdf, area, options); }
     else if (plotType === 'scatter-grid') { drawGridScatterPlotPDF(pdf, area, isLightMode, options); }
@@ -2977,8 +3094,7 @@ function exportPDF(options){
     if (options.showGates && plotType !== 'scatter-grid' && !plotType.startsWith('hist')) drawGatesPDF(pdf, area, isLightMode, options);
     if (plotType !== 'scatter-grid') drawPlotBorderPDF(pdf, area, isLightMode);
     
-    const black = { r: 0, g: 0, b: 0 };
-    const labelColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--text'));
+    const labelColor = pdfThemeColor('text', isLightMode);
     pdf.setTextColor(labelColor.r, labelColor.g, labelColor.b);
     pdf.setFontSize(12); pdf.setFont("helvetica");
     const cx = area.x + area.w / 2; const cy = area.y + area.h / 2;
@@ -3000,10 +3116,9 @@ function exportPDF(options){
 
 function drawAxesPDF(pdf, area, isLightMode, drawXLabels = true, drawYLabels = true){
     const {x,y,w,h} = area;
-    const black = { r: 0, g: 0, b: 0 };
-    const axisColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--axis-stroke'));
-    const tickColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--tick-stroke'));
-    const textColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--muted'));
+    const axisColor = pdfThemeColor('axis', isLightMode);
+    const tickColor = pdfThemeColor('tick', isLightMode);
+    const textColor = isLightMode ? pdfThemeColor('text', true) : pdfThemeColor('muted', false);
     pdf.setDrawColor(axisColor.r, axisColor.g, axisColor.b); pdf.setLineWidth(1); pdf.rect(x, y, w, h, 'S');
     pdf.setFontSize(10); pdf.setTextColor(textColor.r, textColor.g, textColor.b);
     const [xmin,xmax] = [axis.xMin, axis.xMax]; const [ymin,ymax] = [axis.yMin, axis.yMax];
@@ -3032,15 +3147,13 @@ function drawAxesPDF(pdf, area, isLightMode, drawXLabels = true, drawYLabels = t
     }
 }
 function drawPlotBorderPDF(pdf, area, isLightMode){
-    const black = { r: 0, g: 0, b: 0 };
-    const axisColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--axis-stroke'));
+    const axisColor = pdfThemeColor('axis', isLightMode);
     pdf.setDrawColor(axisColor.r, axisColor.g, axisColor.b);
     pdf.setLineWidth(1);
     pdf.rect(area.x, area.y, area.w, area.h, 'S');
 }
 function drawPdfGateLabel(pdf, text, px, py, isLightMode, fontSize = 10) {
-    const black = { r: 0, g: 0, b: 0 };
-    const textColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--text'));
+    const textColor = pdfThemeColor('text', isLightMode);
     pdf.setTextColor(textColor.r, textColor.g, textColor.b);
     pdf.setFontSize(fontSize);
     pdf.text(text, px, py + 0.5, { align: 'center', baseline: 'middle' });
@@ -3070,7 +3183,7 @@ function drawGridGateOverlaysPDF(pdf, cellArea, sample, isLightMode, options = {
     pdf.setFontSize(9);
     gates.forEach(g => {
         if (!gateVisibleForCurrentAxes(g, sample.id)) return;
-        const strokeColor = gateEffectiveSampleId(g) ? hexToRgb(gateColor(g)) : (isLightMode ? gateGray : hexToRgb(getComputedStyle(document.body).getPropertyValue('--gate-stroke')));
+        const strokeColor = gateEffectiveSampleId(g) ? hexToRgb(gateColor(g)) : (isLightMode ? gateGray : pdfThemeColor('gate', false));
         if (showGates) {
             pdf.setDrawColor(strokeColor.r, strokeColor.g, strokeColor.b);
             pdf.setLineWidth(0.9);
@@ -3160,7 +3273,7 @@ function drawGridScatterPlotPDF(pdf, area, isLightMode, options) {
         
         // Feature: Toggle Sample Names
         if (options.showSampleNames) {
-            const black = { r: 0, g: 0, b: 0 }; const textColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--text'));
+            const textColor = pdfThemeColor('text', isLightMode);
             pdf.setTextColor(textColor.r, textColor.g, textColor.b); pdf.setFontSize(10);
             const lines = wrapExportText(pdf, s.name, Math.max(40, cellW - 10)).slice(0, 2);
             lines.forEach((line, idx) => {
@@ -3205,8 +3318,7 @@ function drawAllHistPlotPDF(pdf, area, isLightMode, isOffset, options) {
             pdf.setGState(new pdf.GState({opacity: 1.0}));
 
             if (options.showSampleNames) {
-                const black = { r: 0, g: 0, b: 0 };
-                const textColor = isLightMode ? black : hexToRgb(getComputedStyle(document.body).getPropertyValue('--text'));
+                const textColor = pdfThemeColor('text', isLightMode);
                 pdf.setTextColor(textColor.r, textColor.g, textColor.b);
                 pdf.setFontSize(12);
                 const lines = wrapExportText(pdf, s.name, Math.max(60, w * 0.35)).slice(0, 2);
@@ -3248,7 +3360,7 @@ function drawHistGatesPDF(pdf, area, isLightMode, options = {}, isOffset = false
     const visSamples = visibleSamples();
     const sampleHeight = isOffset && visSamples.length ? h / visSamples.length : h;
     const gateGray = { r: 70, g: 74, b: 80 };
-    const defaultGateColor = isLightMode ? gateGray : hexToRgb(getComputedStyle(document.body).getPropertyValue('--gate-stroke'));
+    const defaultGateColor = isLightMode ? gateGray : pdfThemeColor('gate', false);
 
     gates.forEach(g => {
         if (!gateVisibleForCurrentAxes(g) || !isSegmentGate(g)) return;
@@ -3306,7 +3418,7 @@ function drawGatesPDF(pdf, area, isLightMode, options = {}) {
 
     gates.forEach(g => {
         if (!gateVisibleForCurrentAxes(g)) return; 
-        const strokeColor = gateEffectiveSampleId(g) ? hexToRgb(gateColor(g)) : (isLightMode ? gateGray : hexToRgb(getComputedStyle(document.body).getPropertyValue('--gate-stroke')));
+        const strokeColor = gateEffectiveSampleId(g) ? hexToRgb(gateColor(g)) : (isLightMode ? gateGray : pdfThemeColor('gate', false));
         pdf.setDrawColor(strokeColor.r, strokeColor.g, strokeColor.b);
         if (g.type === 'rect') {
             const {x0,y0,x1,y1} = g.def; const rx = x + xs.fwd(Math.min(x0,x1)); const ry = y + h - ys.fwd(Math.max(y0,y1)); const rw = Math.abs(xs.fwd(x1) - xs.fwd(x0)); const rh = Math.abs(ys.fwd(y1) - ys.fwd(y0));
@@ -3391,6 +3503,11 @@ function populateCheckboxList(container, options) {
 function checkedValues(container) {
     return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value);
 }
+function setStatsExportChecks(checked) {
+    [ui.statsGateOptions, ui.statsParamOptions, ui.statsMetricOptions].forEach(container => {
+        container.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = checked; });
+    });
+}
 
 function openStatsExportModal() {
     if (!visibleSamples().length) { alert('Load and show at least one sample before exporting statistics.'); return; }
@@ -3463,6 +3580,8 @@ function exportStatsCSV(gateIds, paramNames, metricIds) {
 }
 
 ui.exportStats.addEventListener('click', openStatsExportModal);
+ui.statsSelectAll.addEventListener('click', () => setStatsExportChecks(true));
+ui.statsSelectNone.addEventListener('click', () => setStatsExportChecks(false));
 ui.cancelStatsExport.addEventListener('click', () => ui.statsExportModal.classList.remove('visible'));
 ui.confirmStatsExport.addEventListener('click', () => {
     const gateIds = checkedValues(ui.statsGateOptions);
