@@ -142,6 +142,14 @@
     .axisPopover .popoverHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
     .axisPopover .popoverHead strong{font-size:13px}
     .axisPopover .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .plotStylePopover{min-width:280px}
+    .styleControl{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;margin-top:8px}
+    .styleControl label{grid-column:1 / 3;margin:0}
+    .styleControl input[type="range"]{width:100%}
+    .styleValue{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:42px;text-align:right}
+    .styleToggle{display:flex;align-items:center;gap:8px;margin-top:12px}
+    .styleToggle label{margin:0;color:var(--text);font-size:12px;font-weight:500;text-transform:none;letter-spacing:0}
+    .styleSelect{margin-top:8px}
     .fileDelete{margin-left:5px;width:22px;height:22px;padding:0;border-color:transparent;background:transparent;color:var(--muted);font-size:12px;box-shadow:none}
     .fileDelete:hover{border-color:transparent;background:transparent;color:var(--bad)}
     .gateDelete{margin-left:auto;width:22px;height:22px;padding:0;border-color:transparent;background:transparent;color:var(--muted);font-size:12px;box-shadow:none}
@@ -264,6 +272,36 @@
   </div>
 
   <div id="gateApplyMenu" class="contextMenu" role="menu"></div>
+  <div class="axisPopover plotStylePopover" id="plotStyleMenu" role="dialog" aria-hidden="true">
+    <div class="popoverHead">
+      <strong id="plotStyleTitle">Plot Style</strong>
+      <button id="plotStyleClose" class="borderless icon-only" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="styleControl">
+      <label id="plotStylePrimaryLabel" for="plotStylePrimary"></label>
+      <input id="plotStylePrimary" type="range" />
+      <span id="plotStylePrimaryValue" class="styleValue"></span>
+    </div>
+    <div class="styleControl">
+      <label id="plotStyleSecondaryLabel" for="plotStyleSecondary"></label>
+      <input id="plotStyleSecondary" type="range" />
+      <span id="plotStyleSecondaryValue" class="styleValue"></span>
+    </div>
+    <div id="plotStylePseudocolorRow" class="styleToggle">
+      <input id="plotStylePseudocolor" type="checkbox" />
+      <label for="plotStylePseudocolor">Pseudocolor density</label>
+    </div>
+    <div id="plotStylePaletteRow" class="styleSelect">
+      <label for="plotStylePalette">Palette</label>
+      <select id="plotStylePalette">
+        <option value="viridis">Viridis</option>
+        <option value="plasma">Plasma</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button id="plotStyleReset" class="secondary" type="button">Reset</button>
+    </div>
+  </div>
 
   <div class="app">
     <header>
@@ -501,6 +539,11 @@ const ui = {
   axisPopover: byId('axisPopover'), axisPopoverTitle: byId('axisPopoverTitle'), axisPopoverClose: byId('axisPopoverClose'),
   axisPopoverParam: byId('axisPopoverParam'), axisPopoverScale: byId('axisPopoverScale'), axisPopoverMin: byId('axisPopoverMin'), axisPopoverMax: byId('axisPopoverMax'),
   axisPopoverAuto: byId('axisPopoverAuto'), axisPopoverApply: byId('axisPopoverApply'),
+  plotStyleMenu: byId('plotStyleMenu'), plotStyleTitle: byId('plotStyleTitle'), plotStyleClose: byId('plotStyleClose'), plotStyleReset: byId('plotStyleReset'),
+  plotStylePrimary: byId('plotStylePrimary'), plotStylePrimaryLabel: byId('plotStylePrimaryLabel'), plotStylePrimaryValue: byId('plotStylePrimaryValue'),
+  plotStyleSecondary: byId('plotStyleSecondary'), plotStyleSecondaryLabel: byId('plotStyleSecondaryLabel'), plotStyleSecondaryValue: byId('plotStyleSecondaryValue'),
+  plotStylePseudocolorRow: byId('plotStylePseudocolorRow'), plotStylePseudocolor: byId('plotStylePseudocolor'),
+  plotStylePaletteRow: byId('plotStylePaletteRow'), plotStylePalette: byId('plotStylePalette'),
 };
 const ctx = ui.plot.getContext('2d');
 const DEFAULT_PLOT_SIZE = { w: 900, h: 600 };
@@ -525,6 +568,8 @@ let labelDragCellArea = null;
 let labelDragSampleId = null;
 let gateDragState = null;
 let activeAxisPopover = null;
+let activePlotStyleMode = null;
+let plotStyle = { scatterDotSize: 1.5, scatterOpacity: 0.65, histLineWidth: 1.5, histFillOpacity: null, scatterGridPseudocolor: false, scatterGridPalette: 'viridis' };
 const EXAMPLE_DATA_FILES = [
     'example_data/03-Well-B1.fcs',
     'example_data/03-Well-B2.fcs',
@@ -1359,6 +1404,81 @@ function drawCanvasAxisTitles(targetCtx, width, height) {
   }
   targetCtx.restore();
 }
+function clampNumber(v, min, max, fallback) {
+  const n = Number(v);
+  if (!isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+function scatterDotSize() {
+  return clampNumber(plotStyle.scatterDotSize, 0.25, 5, 1.5);
+}
+function scatterOpacity() {
+  return clampNumber(plotStyle.scatterOpacity, 0.05, 1, 0.65);
+}
+function histLineWidth() {
+  return clampNumber(plotStyle.histLineWidth, 0.5, 6, 1.5);
+}
+function histFillOpacity(isOffset) {
+  if (plotStyle.histFillOpacity == null) return isOffset ? 0.6 : 0.35;
+  return clampNumber(plotStyle.histFillOpacity, 0, 1, isOffset ? 0.6 : 0.35);
+}
+const DENSITY_PALETTES = {
+  viridis: ['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'],
+  plasma: ['#0d0887', '#6a00a8', '#b12a90', '#e16462', '#fca636', '#f0f921']
+};
+function lerp(a, b, t) { return a + (b - a) * t; }
+function rgbToHex(r, g, b) {
+  return `#${[r,g,b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+}
+function paletteColor(name, t) {
+  const stops = DENSITY_PALETTES[name] || DENSITY_PALETTES.viridis;
+  const v = Math.max(0, Math.min(1, t));
+  const scaled = v * (stops.length - 1);
+  const idx = Math.min(stops.length - 2, Math.floor(scaled));
+  const local = scaled - idx;
+  const a = hexToRgb(stops[idx]);
+  const b = hexToRgb(stops[idx + 1]);
+  return rgbToHex(lerp(a.r, b.r, local), lerp(a.g, b.g, local), lerp(a.b, b.b, local));
+}
+function drawPseudocolorScatterCell(targetCtx, cellArea, sample, popFilter) {
+    const {x, y, w, h} = cellArea;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const ix = sample.params.indexOf(axis.xParam), iy = sample.params.indexOf(axis.yParam);
+    if (ix < 0 || iy < 0) return;
+    const binSize = 2;
+    const cols = Math.max(1, Math.ceil(w / binSize));
+    const rows = Math.max(1, Math.ceil(h / binSize));
+    const bins = new Uint32Array(cols * rows);
+    const ax = sample.data[ix], ay = sample.data[iy];
+    let maxCount = 0;
+    for (let k = 0; k < sample.n; k++) {
+        const vx = ax[k], vy = ay[k];
+        if(axis.xScale === 'log' && vx <= 0) continue;
+        if(axis.yScale === 'log' && vy <= 0) continue;
+        if(!popFilter(sample, k)) continue;
+        const px = x + xs.fwd(vx);
+        const py = y + h - ys.fwd(vy);
+        if(px < x || px > x + w || py < y || py > y + h) continue;
+        const col = Math.min(cols - 1, Math.max(0, Math.floor((px - x) / binSize)));
+        const row = Math.min(rows - 1, Math.max(0, Math.floor((py - y) / binSize)));
+        const next = ++bins[row * cols + col];
+        if (next > maxCount) maxCount = next;
+    }
+    if (!maxCount) return;
+    targetCtx.save();
+    targetCtx.globalAlpha = scatterOpacity();
+    const denom = Math.log1p(maxCount);
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const count = bins[row * cols + col];
+            if (!count) continue;
+            targetCtx.fillStyle = paletteColor(plotStyle.scatterGridPalette, Math.log1p(count) / denom);
+            targetCtx.fillRect(x + col * binSize, y + row * binSize, binSize + 0.5, binSize + 0.5);
+        }
+    }
+    targetCtx.restore();
+}
 
 function render(targetCtx = ctx, isExport = false, exportOptions = {}){
   if (!isExport) { 
@@ -1397,14 +1517,16 @@ function drawScatterPlot(targetCtx, isExport, exportOptions, width, height){
       const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam);
       if (ix<0 || iy<0) return;
       const ax=s.data[ix], ay=s.data[iy];
-      targetCtx.fillStyle = hexToRGBA(s.color, 0.65);
+      const dotSize = scatterDotSize();
+      const dotRadius = dotSize / 2;
+      targetCtx.fillStyle = hexToRGBA(s.color, scatterOpacity());
       const N = ax.length; const stride = N>150000? Math.ceil(N/150000) : 1;
       
       targetCtx.beginPath();
       if (isExport) {
-        for (let k=0;k<N;k+=stride){ const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; const px = x + xs.fwd(vx); const py = y + h - ys.fwd(vy); if(px<x||px>x+w||py<y||py>y+h) continue; targetCtx.moveTo(px, py); targetCtx.arc(px, py, 0.75, 0, TAU); }
+        for (let k=0;k<N;k+=stride){ const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; const px = x + xs.fwd(vx); const py = y + h - ys.fwd(vy); if(px<x||px>x+w||py<y||py>y+h) continue; targetCtx.moveTo(px + dotRadius, py); targetCtx.arc(px, py, dotRadius, 0, TAU); }
       } else {
-        for (let k=0;k<N;k+=stride){ const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; const px = x + xs.fwd(vx); const py = y + h - ys.fwd(vy); if(px<x||px>x+w||py<y||py>y+h) continue; targetCtx.rect(px-0.75,py-0.75,1.5,1.5); }
+        for (let k=0;k<N;k+=stride){ const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; const px = x + xs.fwd(vx); const py = y + h - ys.fwd(vy); if(px<x||px>x+w||py<y||py>y+h) continue; targetCtx.rect(px-dotRadius,py-dotRadius,dotSize,dotSize); }
       }
       targetCtx.fill();
     });
@@ -1477,21 +1599,27 @@ function drawGridScatterPlot(targetCtx, isExport, exportOptions, width, height) 
         const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam);
         if (ix<0 || iy<0) return;
         const ax=s.data[ix], ay=s.data[iy];
-        targetCtx.fillStyle = hexToRGBA(s.color, 0.65);
-        const N = ax.length; const stride = N>50000? Math.ceil(N/50000) : 1;
+        const dotSize = scatterDotSize();
+        const dotRadius = dotSize / 2;
+        if (plotStyle.scatterGridPseudocolor) {
+            drawPseudocolorScatterCell(targetCtx, cellArea, s, popFilter);
+        } else {
+            targetCtx.fillStyle = hexToRGBA(s.color, scatterOpacity());
+            const N = ax.length; const stride = N>50000? Math.ceil(N/50000) : 1;
 
-        targetCtx.beginPath();
-        for (let k=0;k<N;k+=stride){ 
-            const vx=ax[k], vy=ay[k]; 
-            if(axis.xScale==='log' && vx<=0) continue; 
-            if(axis.yScale==='log' && vy<=0) continue; 
-            if(!popFilter(s,k)) continue; 
-            const px = cellX + xs.fwd(vx); 
-            const py = cellY + cellH - ys.fwd(vy); 
-            if(px<cellX||px>cellX+cellW||py<cellY||py>cellY+cellH) continue; 
-            targetCtx.rect(px-0.75,py-0.75,1.5,1.5); 
+            targetCtx.beginPath();
+            for (let k=0;k<N;k+=stride){ 
+                const vx=ax[k], vy=ay[k]; 
+                if(axis.xScale==='log' && vx<=0) continue; 
+                if(axis.yScale==='log' && vy<=0) continue; 
+                if(!popFilter(s,k)) continue; 
+                const px = cellX + xs.fwd(vx); 
+                const py = cellY + cellH - ys.fwd(vy); 
+                if(px<cellX||px>cellX+cellW||py<cellY||py>cellY+cellH) continue; 
+                targetCtx.rect(px-dotRadius,py-dotRadius,dotSize,dotSize); 
+            }
+            targetCtx.fill();
         }
-        targetCtx.fill();
         targetCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text');
         targetCtx.textAlign = 'right';
         targetCtx.font = '400 10px "Avenir Next", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
@@ -1504,6 +1632,20 @@ function drawGridScatterPlot(targetCtx, isExport, exportOptions, width, height) 
 function addSmoothDensityCurveToPath(targetCtx, densityPoints, xForPoint, yForPoint) {
     if (!densityPoints.length) return;
     targetCtx.lineTo(xForPoint(densityPoints[0]), yForPoint(densityPoints[0]));
+    if (densityPoints.length === 1) return;
+    for (let i = 1; i < densityPoints.length - 1; i++) {
+        const x = xForPoint(densityPoints[i]);
+        const y = yForPoint(densityPoints[i]);
+        const nextX = xForPoint(densityPoints[i + 1]);
+        const nextY = yForPoint(densityPoints[i + 1]);
+        targetCtx.quadraticCurveTo(x, y, (x + nextX) / 2, (y + nextY) / 2);
+    }
+    const last = densityPoints[densityPoints.length - 1];
+    targetCtx.lineTo(xForPoint(last), yForPoint(last));
+}
+function addSmoothDensityStrokeToPath(targetCtx, densityPoints, xForPoint, yForPoint) {
+    if (!densityPoints.length) return;
+    targetCtx.moveTo(xForPoint(densityPoints[0]), yForPoint(densityPoints[0]));
     if (densityPoints.length === 1) return;
     for (let i = 1; i < densityPoints.length - 1; i++) {
         const x = xForPoint(densityPoints[i]);
@@ -1541,9 +1683,9 @@ function drawHistPlot(targetCtx, isExport, isOffset, exportOptions, width, heigh
           
           const baselineY = y + (sampleIndex + 1) * sampleHeight;
           
-          targetCtx.fillStyle = hexToRGBA(s.color, 0.6);
+          targetCtx.fillStyle = hexToRGBA(s.color, histFillOpacity(true));
           targetCtx.strokeStyle = s.color;
-          targetCtx.lineWidth = 1.5;
+          targetCtx.lineWidth = histLineWidth();
 
           targetCtx.beginPath();
           targetCtx.moveTo(x + xs.fwd(densityPoints[0].x), baselineY);
@@ -1556,6 +1698,21 @@ function drawHistPlot(targetCtx, isExport, isOffset, exportOptions, width, heigh
           targetCtx.lineTo(x + xs.fwd(densityPoints[densityPoints.length - 1].x), baselineY);
           targetCtx.closePath();
           targetCtx.fill();
+          targetCtx.save();
+          targetCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--axis-stroke');
+          targetCtx.lineWidth = 1;
+          targetCtx.beginPath();
+          targetCtx.moveTo(x, baselineY);
+          targetCtx.lineTo(x + w, baselineY);
+          targetCtx.stroke();
+          targetCtx.restore();
+          targetCtx.beginPath();
+          addSmoothDensityStrokeToPath(
+            targetCtx,
+            densityPoints,
+            p => x + xs.fwd(p.x),
+            p => baselineY - (p.y / maxDensity) * sampleHeight * 0.8
+          );
           targetCtx.stroke();
 
           targetCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text');
@@ -1582,9 +1739,9 @@ function drawHistPlot(targetCtx, isExport, isOffset, exportOptions, width, heigh
         const ys = makeScaler(0, globalMaxDensity, 'linear', h);
 
         allDensityPoints.forEach(({s, densityPoints}) => {
-            targetCtx.fillStyle = hexToRGBA(s.color, 0.35);
+            targetCtx.fillStyle = hexToRGBA(s.color, histFillOpacity(false));
             targetCtx.strokeStyle = s.color;
-            targetCtx.lineWidth = 1.5;
+            targetCtx.lineWidth = histLineWidth();
 
             targetCtx.beginPath();
             targetCtx.moveTo(x + xs.fwd(densityPoints[0].x), y + h);
@@ -1597,6 +1754,13 @@ function drawHistPlot(targetCtx, isExport, isOffset, exportOptions, width, heigh
             targetCtx.lineTo(x + xs.fwd(densityPoints[densityPoints.length - 1].x), y + h);
             targetCtx.closePath();
             targetCtx.fill();
+            targetCtx.beginPath();
+            addSmoothDensityStrokeToPath(
+                targetCtx,
+                densityPoints,
+                p => x + xs.fwd(p.x),
+                p => y + h - ys.fwd(p.y)
+            );
             targetCtx.stroke();
         });
     }
@@ -2264,6 +2428,7 @@ function closeGateApplyMenu() {
 function openGateApplyMenu(gateId, clientX, clientY) {
     const g = gates.find(g => g.id === gateId);
     if (!g) return;
+    closePlotStyleMenu();
     ui.gateApplyMenu.innerHTML = '';
     const title = document.createElement('div');
     title.className = 'hint';
@@ -2604,9 +2769,15 @@ ui.plot.addEventListener('dblclick', (e)=>{
 ui.plot.addEventListener('contextmenu', (e)=>{
   const rect = ui.plot.getBoundingClientRect(); const px = e.clientX-rect.left, py=e.clientY-rect.top;
   const g = hitGateAtCanvasPoint(px, py);
-  if (!g) return;
   e.preventDefault();
-  openGateApplyMenu(g.id, e.clientX, e.clientY);
+  if (g) {
+    openGateApplyMenu(g.id, e.clientX, e.clientY);
+    return;
+  }
+  const pointerCtx = pointerPlotContext(px, py);
+  if (!pointerCtx) return;
+  const isHist = ui.plotType.value.startsWith('hist');
+  openPlotStyleMenu(isHist ? 'hist' : (ui.plotType.value === 'scatter-grid' ? 'scatter-grid' : 'scatter'), e.clientX, e.clientY);
 });
 
 // Feature: Keyboard Shortcuts
@@ -2623,7 +2794,7 @@ window.addEventListener('keydown', (e)=>{
   if (e.key === 'e' || e.key === 'E' || e.key === 'c' || e.key === 'C') setTool('ellipse');
   
   if (e.key==='Enter' && drawState && drawState.type==='poly'){ finalizePoly(); }
-  else if (e.key==='Escape'){ closeGateApplyMenu(); editingGate.id = null; resetToSelect(); }
+  else if (e.key==='Escape'){ closeGateApplyMenu(); closePlotStyleMenu(); editingGate.id = null; resetToSelect(); }
 });
 
 ui.plot.addEventListener('mouseup', (e)=>{
@@ -2912,6 +3083,89 @@ function closeAxisPopover() {
     ui.axisPopover.classList.remove('open');
     ui.axisPopover.setAttribute('aria-hidden', 'true');
 }
+function closePlotStyleMenu() {
+    activePlotStyleMode = null;
+    ui.plotStyleMenu.classList.remove('open');
+    ui.plotStyleMenu.setAttribute('aria-hidden', 'true');
+}
+function formatStyleValue(value, suffix = '') {
+    const n = Number(value);
+    return `${Number.isInteger(n) ? n.toFixed(0) : n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}${suffix}`;
+}
+function setRangeConfig(input, {min, max, step, value}) {
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.value = String(value);
+}
+function updatePlotStyleValueLabels() {
+    if (activePlotStyleMode === 'hist') {
+        ui.plotStylePrimaryValue.textContent = formatStyleValue(ui.plotStylePrimary.value, ' px');
+        ui.plotStyleSecondaryValue.textContent = formatStyleValue(Number(ui.plotStyleSecondary.value) * 100, '%');
+    } else {
+        ui.plotStylePrimaryValue.textContent = formatStyleValue(ui.plotStylePrimary.value, ' px');
+        ui.plotStyleSecondaryValue.textContent = formatStyleValue(Number(ui.plotStyleSecondary.value) * 100, '%');
+    }
+}
+function configurePlotStyleMenu(mode) {
+    activePlotStyleMode = mode;
+    const isHist = mode === 'hist';
+    const isScatterGrid = mode === 'scatter-grid';
+    ui.plotStyleTitle.textContent = isHist ? 'Histogram Style' : 'Dot Plot Style';
+    ui.plotStylePrimaryLabel.textContent = isHist ? 'Line width' : 'Dot size';
+    ui.plotStyleSecondaryLabel.textContent = isHist ? 'Fill opacity' : 'Dot opacity';
+    ui.plotStylePseudocolorRow.style.display = isScatterGrid ? 'flex' : 'none';
+    ui.plotStylePaletteRow.style.display = isScatterGrid ? 'block' : 'none';
+    ui.plotStylePseudocolor.checked = !!plotStyle.scatterGridPseudocolor;
+    ui.plotStylePalette.value = plotStyle.scatterGridPalette || 'viridis';
+    if (isHist) {
+        setRangeConfig(ui.plotStylePrimary, {min: 0.5, max: 6, step: 0.25, value: histLineWidth()});
+        setRangeConfig(ui.plotStyleSecondary, {min: 0, max: 1, step: 0.05, value: histFillOpacity(ui.plotType.value === 'hist-offset')});
+    } else {
+        setRangeConfig(ui.plotStylePrimary, {min: 0.25, max: 5, step: 0.25, value: scatterDotSize()});
+        setRangeConfig(ui.plotStyleSecondary, {min: 0.05, max: 1, step: 0.05, value: scatterOpacity()});
+    }
+    updatePlotStyleValueLabels();
+}
+function applyPlotStyleControl() {
+    if (activePlotStyleMode === 'hist') {
+        plotStyle.histLineWidth = clampNumber(ui.plotStylePrimary.value, 0.5, 6, 1.5);
+        plotStyle.histFillOpacity = clampNumber(ui.plotStyleSecondary.value, 0, 1, histFillOpacity(ui.plotType.value === 'hist-offset'));
+    } else if (activePlotStyleMode === 'scatter' || activePlotStyleMode === 'scatter-grid') {
+        plotStyle.scatterDotSize = clampNumber(ui.plotStylePrimary.value, 0.25, 5, 1.5);
+        plotStyle.scatterOpacity = clampNumber(ui.plotStyleSecondary.value, 0.05, 1, 0.65);
+    }
+    updatePlotStyleValueLabels();
+    render();
+}
+function resetActivePlotStyle() {
+    if (activePlotStyleMode === 'hist') {
+        plotStyle.histLineWidth = 1.5;
+        plotStyle.histFillOpacity = null;
+    } else if (activePlotStyleMode === 'scatter' || activePlotStyleMode === 'scatter-grid') {
+        plotStyle.scatterDotSize = 1.5;
+        plotStyle.scatterOpacity = 0.65;
+        if (activePlotStyleMode === 'scatter-grid') {
+            plotStyle.scatterGridPseudocolor = false;
+            plotStyle.scatterGridPalette = 'viridis';
+        }
+    }
+    configurePlotStyleMenu(activePlotStyleMode);
+    render();
+}
+function openPlotStyleMenu(mode, clientX, clientY) {
+    closeGateApplyMenu();
+    closeAxisPopover();
+    configurePlotStyleMenu(mode);
+    const pop = ui.plotStyleMenu;
+    pop.classList.add('open');
+    pop.setAttribute('aria-hidden', 'false');
+    const rect = pop.getBoundingClientRect();
+    const left = Math.max(8, Math.min(window.innerWidth - rect.width - 8, clientX));
+    const top = Math.max(8, Math.min(window.innerHeight - rect.height - 8, clientY));
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+}
 function applyAxisPopover(auto = false) {
     if (!activeAxisPopover) return;
     const isX = activeAxisPopover === 'x';
@@ -2957,9 +3211,26 @@ document.addEventListener('click', (e) => {
     closeAxisPopover();
 });
 document.addEventListener('click', (e) => {
+    if (!ui.plotStyleMenu.classList.contains('open')) return;
+    if (ui.plotStyleMenu.contains(e.target)) return;
+    closePlotStyleMenu();
+});
+document.addEventListener('click', (e) => {
     if (!ui.gateApplyMenu.classList.contains('open')) return;
     if (ui.gateApplyMenu.contains(e.target)) return;
     closeGateApplyMenu();
+});
+ui.plotStyleClose.addEventListener('click', closePlotStyleMenu);
+ui.plotStyleReset.addEventListener('click', resetActivePlotStyle);
+ui.plotStylePrimary.addEventListener('input', applyPlotStyleControl);
+ui.plotStyleSecondary.addEventListener('input', applyPlotStyleControl);
+ui.plotStylePseudocolor.addEventListener('change', () => {
+    plotStyle.scatterGridPseudocolor = ui.plotStylePseudocolor.checked;
+    render();
+});
+ui.plotStylePalette.addEventListener('change', () => {
+    plotStyle.scatterGridPalette = ui.plotStylePalette.value;
+    render();
 });
 
 [...document.querySelectorAll('[data-tool]')].forEach(b=> b.addEventListener('click', ()=>{ setTool(b.dataset.tool); }));
@@ -3245,17 +3516,57 @@ function drawScatterPlotPDF(pdf, area, options){
     visibleSamples().forEach(s => {
         const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam); if (ix < 0 || iy < 0) return;
         const ax = s.data[ix], ay = s.data[iy];
-        const pointColor = hexToRgb(s.color); pdf.setFillColor(pointColor.r, pointColor.g, pointColor.b); pdf.setGState(new pdf.GState({opacity: 0.65}));
+        const pointColor = hexToRgb(s.color); pdf.setFillColor(pointColor.r, pointColor.g, pointColor.b); pdf.setGState(new pdf.GState({opacity: scatterOpacity()}));
+        const dotRadius = scatterDotSize() / 3;
         const N = ax.length; 
         // Feature: Stride logic based on All Events toggle
         const stride = (options && options.allEvents) ? 1 : (N > 50000 ? Math.ceil(N / 50000) : 1);
         for (let k=0; k<N; k+=stride) {
             const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; 
             const px = x + xs.fwd(vx); const py = y + h - ys.fwd(vy); 
-            if(px < x || px > x+w || py < y || py > y+h) continue; pdf.circle(px, py, 0.5, 'F');
+            if(px < x || px > x+w || py < y || py > y+h) continue; pdf.circle(px, py, dotRadius, 'F');
         }
         pdf.setGState(new pdf.GState({opacity: 1.0}));
     });
+}
+function drawPseudocolorScatterCellPDF(pdf, cellArea, sample, popFilter) {
+    const {x, y, w, h} = cellArea;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const ix = sample.params.indexOf(axis.xParam), iy = sample.params.indexOf(axis.yParam);
+    if (ix < 0 || iy < 0) return;
+    const binSize = 2;
+    const cols = Math.max(1, Math.ceil(w / binSize));
+    const rows = Math.max(1, Math.ceil(h / binSize));
+    const bins = new Uint32Array(cols * rows);
+    const ax = sample.data[ix], ay = sample.data[iy];
+    let maxCount = 0;
+    for (let k = 0; k < sample.n; k++) {
+        const vx = ax[k], vy = ay[k];
+        if(axis.xScale === 'log' && vx <= 0) continue;
+        if(axis.yScale === 'log' && vy <= 0) continue;
+        if(!popFilter(sample, k)) continue;
+        const px = x + xs.fwd(vx);
+        const py = y + h - ys.fwd(vy);
+        if(px < x || px > x + w || py < y || py > y + h) continue;
+        const col = Math.min(cols - 1, Math.max(0, Math.floor((px - x) / binSize)));
+        const row = Math.min(rows - 1, Math.max(0, Math.floor((py - y) / binSize)));
+        const next = ++bins[row * cols + col];
+        if (next > maxCount) maxCount = next;
+    }
+    if (!maxCount) return;
+    const denom = Math.log1p(maxCount);
+    pdf.setGState(new pdf.GState({opacity: scatterOpacity()}));
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const count = bins[row * cols + col];
+            if (!count) continue;
+            const c = hexToRgb(paletteColor(plotStyle.scatterGridPalette, Math.log1p(count) / denom));
+            pdf.setFillColor(c.r, c.g, c.b);
+            pdf.rect(x + col * binSize, y + row * binSize, binSize + 0.5, binSize + 0.5, 'F');
+        }
+    }
+    pdf.setGState(new pdf.GState({opacity: 1}));
 }
 
 function drawGridScatterPlotPDF(pdf, area, isLightMode, options) {
@@ -3274,15 +3585,20 @@ function drawGridScatterPlotPDF(pdf, area, isLightMode, options) {
         const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, cellW); const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, cellH);
         const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam); if (ix<0 || iy<0) return;
         const ax=s.data[ix], ay=s.data[iy];
-        const pointColor = hexToRgb(s.color); pdf.setFillColor(pointColor.r, pointColor.g, pointColor.b); pdf.setGState(new pdf.GState({opacity: 0.65}));
-        const N = ax.length; 
-        const stride = (options && options.allEvents) ? 1 : (N > 25000/nSamples ? Math.ceil(N/(25000/nSamples)) : 1);
-        for (let k=0; k<N; k+=stride){ 
-            const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; 
-            const px = cellX + xs.fwd(vx); const py = cellY + cellH - ys.fwd(vy); 
-            if(px<cellX||px>cellX+cellW||py<cellY||py>cellY+cellH) continue; pdf.circle(px, py, 0.5, 'F');
+        if (plotStyle.scatterGridPseudocolor) {
+            drawPseudocolorScatterCellPDF(pdf, cellArea, s, popFilter);
+        } else {
+            const pointColor = hexToRgb(s.color); pdf.setFillColor(pointColor.r, pointColor.g, pointColor.b); pdf.setGState(new pdf.GState({opacity: scatterOpacity()}));
+            const dotRadius = scatterDotSize() / 3;
+            const N = ax.length; 
+            const stride = (options && options.allEvents) ? 1 : (N > 25000/nSamples ? Math.ceil(N/(25000/nSamples)) : 1);
+            for (let k=0; k<N; k+=stride){ 
+                const vx=ax[k], vy=ay[k]; if(axis.xScale==='log' && vx<=0) continue; if(axis.yScale==='log' && vy<=0) continue; if(!popFilter(s,k)) continue; 
+                const px = cellX + xs.fwd(vx); const py = cellY + cellH - ys.fwd(vy); 
+                if(px<cellX||px>cellX+cellW||py<cellY||py>cellY+cellH) continue; pdf.circle(px, py, dotRadius, 'F');
+            }
+            pdf.setGState(new pdf.GState({opacity: 1.0}));
         }
-        pdf.setGState(new pdf.GState({opacity: 1.0}));
         
         // Feature: Toggle Sample Names
         if (options.showSampleNames) {
@@ -3320,14 +3636,24 @@ function drawAllHistPlotPDF(pdf, area, isLightMode, isOffset, options) {
             const baselineY = y + (sampleIndex + 1) * sampleHeight;
             const color = hexToRgb(s.color);
             pdf.setFillColor(color.r, color.g, color.b); pdf.setDrawColor(color.r, color.g, color.b);
-            pdf.setGState(new pdf.GState({opacity: 0.6})); pdf.setLineWidth(1.5);
+            pdf.setGState(new pdf.GState({opacity: histFillOpacity(true)})); pdf.setLineWidth(histLineWidth());
             
             const startPoint = [x + xs.fwd(densityPoints[0].x), baselineY];
             pdf.moveTo(startPoint[0], startPoint[1]);
             densityPoints.forEach(p => pdf.lineTo(x + xs.fwd(p.x), baselineY - (p.y / maxDensity) * sampleHeight * 0.8));
             pdf.lineTo(x + xs.fwd(densityPoints[densityPoints.length - 1].x), baselineY);
             pdf.lineTo(startPoint[0], startPoint[1]); 
-            pdf.fillStroke();
+            pdf.fill();
+            pdf.setGState(new pdf.GState({opacity: 1.0}));
+            const axisColor = pdfThemeColor('axis', isLightMode);
+            pdf.setDrawColor(axisColor.r, axisColor.g, axisColor.b);
+            pdf.setLineWidth(1);
+            pdf.line(x, baselineY, x + w, baselineY);
+            pdf.setDrawColor(color.r, color.g, color.b);
+            pdf.setLineWidth(histLineWidth());
+            pdf.moveTo(x + xs.fwd(densityPoints[0].x), baselineY - (densityPoints[0].y / maxDensity) * sampleHeight * 0.8);
+            densityPoints.slice(1).forEach(p => pdf.lineTo(x + xs.fwd(p.x), baselineY - (p.y / maxDensity) * sampleHeight * 0.8));
+            pdf.stroke();
             pdf.setGState(new pdf.GState({opacity: 1.0}));
 
             if (options.showSampleNames) {
@@ -3355,13 +3681,19 @@ function drawAllHistPlotPDF(pdf, area, isLightMode, isOffset, options) {
         allDensityPoints.forEach(({s, densityPoints}) => {
             const color = hexToRgb(s.color);
             pdf.setFillColor(color.r, color.g, color.b); pdf.setDrawColor(color.r, color.g, color.b);
-            pdf.setGState(new pdf.GState({opacity: 0.35})); pdf.setLineWidth(1.5);
+            pdf.setGState(new pdf.GState({opacity: histFillOpacity(false)})); pdf.setLineWidth(histLineWidth());
             const startPoint = [x + xs.fwd(densityPoints[0].x), y + h];
             pdf.moveTo(startPoint[0], startPoint[1]);
             densityPoints.forEach(p => pdf.lineTo(x + xs.fwd(p.x), y + h - ys.fwd(p.y)));
             pdf.lineTo(x + xs.fwd(densityPoints[densityPoints.length - 1].x), y + h);
             pdf.lineTo(startPoint[0], startPoint[1]); 
-            pdf.fillStroke();
+            pdf.fill();
+            pdf.setGState(new pdf.GState({opacity: 1.0}));
+            pdf.setDrawColor(color.r, color.g, color.b);
+            pdf.setLineWidth(histLineWidth());
+            pdf.moveTo(x + xs.fwd(densityPoints[0].x), y + h - ys.fwd(densityPoints[0].y));
+            densityPoints.slice(1).forEach(p => pdf.lineTo(x + xs.fwd(p.x), y + h - ys.fwd(p.y)));
+            pdf.stroke();
             pdf.setGState(new pdf.GState({opacity: 1.0}));
         });
     }
@@ -3609,7 +3941,7 @@ ui.confirmStatsExport.addEventListener('click', () => {
 ui.saveWorkspace.addEventListener('click', () => {
     const workspace = {
         samples: samples.map(s => ({...s, data: Array.from(s.data.map(d => Array.from(d)))})), 
-        gates, axis, visibleSampleIds: Array.from(visibleSampleIds), currentPopulationId, gridCols: ui.gridCols.value,
+        gates, axis, visibleSampleIds: Array.from(visibleSampleIds), currentPopulationId, gridCols: ui.gridCols.value, plotStyle,
     };
     const blob = new Blob([JSON.stringify(workspace, null, 2)], {type: 'application/json'});
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'workspace.json'; a.click(); URL.revokeObjectURL(url);
@@ -3626,6 +3958,7 @@ ui.loadWorkspaceInput.addEventListener('change', (e) => {
             gates = workspace.gates; axis = workspace.axis;
             gates.forEach(normalizeGate);
             visibleSampleIds = new Set(workspace.visibleSampleIds); currentPopulationId = workspace.currentPopulationId;
+            if (workspace.plotStyle) plotStyle = {...plotStyle, ...workspace.plotStyle};
             markGatePercentDirty();
             refreshFileList(); refreshParamOptions(); rebuildGateTree();
             ui.xParam.value = axis.xParam; ui.yParam.value = axis.yParam; ui.xScale.value = axis.xScale; ui.yScale.value = axis.yScale;
