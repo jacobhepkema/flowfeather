@@ -611,12 +611,21 @@ function safeHandler(label, fn) {
     };
 }
 function markGatePercentDirty() { gatePercentCacheDirty = true; }
-function syncToolAvailability() {
+function updateUIVisibility() {
     const isHist = ui.plotType.value.startsWith('hist');
     const is2d = ui.plotType.value.startsWith('scatter');
+    ui.yParam.disabled = isHist || !is2d;
+    ui.yScale.disabled = isHist || !is2d;
+    ui.yMin.disabled = isHist || !is2d;
+    ui.yMax.disabled = isHist || !is2d;
     ui.autoY.disabled = isHist || !is2d;
     ui.gridCols.disabled = ui.plotType.value !== 'scatter-grid';
     ui.gridColsWrap.style.display = ui.plotType.value === 'scatter-grid' ? 'flex' : 'none';
+    syncToolAvailability();
+}
+
+function syncToolAvailability() {
+    const isHist = ui.plotType.value.startsWith('hist');
     const rectBtn = document.querySelector('[data-tool="rect"]');
     const segmentBtn = document.querySelector('[data-tool="segment"]');
     const ellipseBtn = document.querySelector('[data-tool="ellipse"]');
@@ -2557,12 +2566,26 @@ function removeGateAndChildren(gateId) {
     render();
 }
 function selectGatePopulation(gateId) {
-    if (!gates.some(g => g.id === gateId)) return;
+    const g = gates.find(g => g.id === gateId);
+    if (!g) return;
     currentPopulationId = gateId;
     ui.population.value = gateId;
     editingGate.id = gateId;
+
+    if (g.xParam) ui.xParam.value = g.xParam;
+    if (g.yParam) ui.yParam.value = g.yParam;
+    if (g.xScale) ui.xScale.value = g.xScale;
+    if (g.yScale) ui.yScale.value = g.yScale;
+    if (g.xMin !== undefined && g.xMin !== null) ui.xMin.value = g.xMin;
+    if (g.xMax !== undefined && g.xMax !== null) ui.xMax.value = g.xMax;
+    if (g.yMin !== undefined && g.yMin !== null) ui.yMin.value = g.yMin;
+    if (g.yMax !== undefined && g.yMax !== null) ui.yMax.value = g.yMax;
+    if (g.plotType) ui.plotType.value = g.plotType;
+
+    updateUIVisibility();
+    setAxisFromUI();
     rebuildGateTree();
-    if (!maybeSwitchToSscHeightAreaForGate(gateId)) render();
+    render();
 }
 
 // ---------------------------- Gate Drawing & Editing ----------------------------
@@ -2872,25 +2895,6 @@ function drawGhost(){
   ctx.restore();
 }
 
-function maybeSwitchToSscHeightAreaForGate(gateId) {
-    const g = gates.find(g => g.id === gateId);
-    if (!g || isSegmentGate(g) || !samples.length) return false;
-    const xName = (g.xParam || '').toUpperCase();
-    const yName = (g.yParam || '').toUpperCase();
-    if (!xName.includes('FSC') || !yName.includes('SSC')) return false;
-    const params = samples[0].params || [];
-    const sscH = params.find(p => p.toUpperCase().includes('SSC-H'));
-    const sscA = params.find(p => p.toUpperCase().includes('SSC-A'));
-    if (!sscH || !sscA) return false;
-    if (ui.xParam.value === sscH && ui.yParam.value === sscA) return false;
-    saveAxisToCache(ui.xParam.value, true);
-    saveAxisToCache(ui.yParam.value, false);
-    ui.xParam.value = sscH;
-    ui.yParam.value = sscA;
-    ui.xParam.dispatchEvent(new Event('change'));
-    ui.yParam.dispatchEvent(new Event('change'));
-    return true;
-}
 function parentIdForNewGate(sampleId) {
     if (!currentPopulationId) return null;
     const parent = gates.find(g => g.id === currentPopulationId);
@@ -2903,7 +2907,11 @@ function parentIdForNewGate(sampleId) {
 function finalizeRect(){
   const {start,cur} = drawState; let x0=start.x, y0=start.y, x1=cur.x, y1=cur.y;
   const sampleId = drawState.sampleId || null;
-  const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'rect', sampleId, parentId: parentIdForNewGate(sampleId), def:{x0,y0,x1,y1}, xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale};
+  const g = {
+    id:idGen(), name:`Gate ${gates.length+1}`, type:'rect', sampleId, parentId: parentIdForNewGate(sampleId), def:{x0,y0,x1,y1},
+    xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale,
+    xMin: axis.xMin, xMax: axis.xMax, yMin: axis.yMin, yMax: axis.yMax, plotType: ui.plotType.value
+  };
   gates.push(g); drawState=null; 
   markGatePercentDirty();
   refreshPopulationOptions(); rebuildGateTree(); render();
@@ -2915,7 +2923,11 @@ function finalizeSegment(){
   const x0 = start.x, x1 = cur.x;
   if (!isFinite(x0) || !isFinite(x1) || Math.abs(x1 - x0) <= 0) { drawState=null; render(); return; }
   const sampleId = drawState.sampleId || null;
-  const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'segment', sampleId, parentId: parentIdForNewGate(sampleId), def:{x0, x1}, xParam: axis.xParam, yParam: null, xScale: axis.xScale, yScale: null};
+  const g = {
+    id:idGen(), name:`Gate ${gates.length+1}`, type:'segment', sampleId, parentId: parentIdForNewGate(sampleId), def:{x0, x1},
+    xParam: axis.xParam, yParam: null, xScale: axis.xScale, yScale: null,
+    xMin: axis.xMin, xMax: axis.xMax, yMin: axis.yMin, yMax: axis.yMax, plotType: ui.plotType.value
+  };
   gates.push(g); drawState=null;
   markGatePercentDirty();
   refreshPopulationOptions(); rebuildGateTree(); render();
@@ -2928,7 +2940,11 @@ function finalizeEllipse(){
   const {center, rx, ry, angle} = ellipse;
   if (!(rx > 0) || !(ry > 0)) { drawState=null; render(); return; }
   const sampleId = drawState.sampleId || null;
-  const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'ellipse', sampleId, parentId: parentIdForNewGate(sampleId), def:{cx:center.x, cy:center.y, rx, ry, angle}, xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale};
+  const g = {
+    id:idGen(), name:`Gate ${gates.length+1}`, type:'ellipse', sampleId, parentId: parentIdForNewGate(sampleId), def:{cx:center.x, cy:center.y, rx, ry, angle},
+    xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale,
+    xMin: axis.xMin, xMax: axis.xMax, yMin: axis.yMin, yMax: axis.yMax, plotType: ui.plotType.value
+  };
   gates.push(g); drawState=null; 
   markGatePercentDirty();
   refreshPopulationOptions(); rebuildGateTree(); render();
@@ -2938,7 +2954,11 @@ function finalizeEllipse(){
 function finalizePoly(){
   const pts = (drawState?.pts||[]).slice(); if(pts.length<3){ drawState=null; render(); return; }
   const sampleId = drawState.sampleId || null;
-  const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'poly', sampleId, parentId: parentIdForNewGate(sampleId), def:{pts}, xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale};
+  const g = {
+    id:idGen(), name:`Gate ${gates.length+1}`, type:'poly', sampleId, parentId: parentIdForNewGate(sampleId), def:{pts},
+    xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale,
+    xMin: axis.xMin, xMax: axis.xMax, yMin: axis.yMin, yMax: axis.yMax, plotType: ui.plotType.value
+  };
   gates.push(g); drawState=null; 
   markGatePercentDirty();
   refreshPopulationOptions(); rebuildGateTree(); render();
@@ -2965,14 +2985,7 @@ function finalizePoly(){
           autoRangesFromData();
       }
 
-      const is2d = ui.plotType.value.startsWith('scatter');
-      const isHist = ui.plotType.value.startsWith('hist');
-      ui.yParam.disabled = isHist || !is2d; 
-      ui.yScale.disabled = isHist || !is2d;
-      ui.yMin.disabled = isHist || !is2d; 
-      ui.yMax.disabled = isHist || !is2d;
-      ui.autoY.disabled = isHist || !is2d;
-      
+      updateUIVisibility();
       setAxisFromUI();
       markGatePercentDirty();
       render(); 
@@ -2992,14 +3005,7 @@ ui.swapAxes.addEventListener('click', () => {
 
 ['plotType','gridCols'].forEach(id=>{
     ui[id].addEventListener('change', (e)=>{
-        const is2d = ui.plotType.value.startsWith('scatter');
-        const isHist = ui.plotType.value.startsWith('hist');
-        ui.yParam.disabled = isHist || !is2d; 
-        ui.yScale.disabled = isHist || !is2d;
-        ui.yMin.disabled = isHist || !is2d; 
-        ui.yMax.disabled = isHist || !is2d;
-        ui.autoY.disabled = isHist || !is2d;
-        syncToolAvailability();
+        updateUIVisibility();
         setAxisFromUI();
         markGatePercentDirty();
         render();
@@ -3055,9 +3061,13 @@ ui.resetView.addEventListener('click', () => {
     render();
 });
 ui.population.addEventListener('change', ()=>{
-    currentPopulationId = ui.population.value==='ALL'? null : ui.population.value;
-    rebuildGateTree();
-    if (!currentPopulationId || !maybeSwitchToSscHeightAreaForGate(currentPopulationId)) render();
+    if (ui.population.value === 'ALL') {
+        currentPopulationId = null;
+        rebuildGateTree();
+        render();
+    } else {
+        selectGatePopulation(ui.population.value);
+    }
 });
 function openAxisPopover(axisKey, anchorEl) {
     if (axisKey === 'y' && ui.yParam.disabled) return;
