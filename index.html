@@ -296,6 +296,7 @@
       <select id="plotStylePalette">
         <option value="viridis">Viridis</option>
         <option value="plasma">Plasma</option>
+        <option value="turbo">Turbo</option>
       </select>
     </div>
     <div class="modal-footer">
@@ -1424,22 +1425,43 @@ function histFillOpacity(isOffset) {
 }
 const DENSITY_PALETTES = {
   viridis: ['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'],
-  plasma: ['#0d0887', '#6a00a8', '#b12a90', '#e16462', '#fca636', '#f0f921']
+  plasma: ['#0d0887', '#6a00a8', '#b12a90', '#e16462', '#fca636', '#f0f921'],
+  turbo: ['#30123b', '#4158d0', '#28bbec', '#a2f342', '#fb9a06', '#d23105', '#7a0403']
 };
+const PRECOMPUTED_DENSITY_PALETTES = Object.fromEntries(
+  Object.entries(DENSITY_PALETTES).map(([name, stops]) => [name, stops.map(hexToRgb)])
+);
 function lerp(a, b, t) { return a + (b - a) * t; }
 function rgbToHex(r, g, b) {
   return `#${[r,g,b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
 }
 function paletteColor(name, t) {
-  const stops = DENSITY_PALETTES[name] || DENSITY_PALETTES.viridis;
+  const stops = PRECOMPUTED_DENSITY_PALETTES[name] || PRECOMPUTED_DENSITY_PALETTES.viridis;
   const v = Math.max(0, Math.min(1, t));
   const scaled = v * (stops.length - 1);
   const idx = Math.min(stops.length - 2, Math.floor(scaled));
   const local = scaled - idx;
-  const a = hexToRgb(stops[idx]);
-  const b = hexToRgb(stops[idx + 1]);
+  const a = stops[idx];
+  const b = stops[idx + 1];
   return rgbToHex(lerp(a.r, b.r, local), lerp(a.g, b.g, local), lerp(a.b, b.b, local));
 }
+function getPaletteLUT(name, steps = 256) {
+    const stops = PRECOMPUTED_DENSITY_PALETTES[name] || PRECOMPUTED_DENSITY_PALETTES.viridis;
+    const lut = new Uint8ClampedArray(steps * 4);
+    for (let i = 0; i < steps; i++) {
+        const t = i / (steps - 1);
+        const scaled = t * (stops.length - 1);
+        const idx = Math.min(stops.length - 2, Math.floor(scaled));
+        const local = scaled - idx;
+        const a = stops[idx], b = stops[idx + 1];
+        lut[i * 4] = lerp(a.r, b.r, local);
+        lut[i * 4 + 1] = lerp(a.g, b.g, local);
+        lut[i * 4 + 2] = lerp(a.b, b.b, local);
+        lut[i * 4 + 3] = 255;
+    }
+    return lut;
+}
+const offscreenDensityCanvas = document.createElement('canvas');
 function drawPseudocolorScatterCell(targetCtx, cellArea, sample, popFilter) {
     const {x, y, w, h} = cellArea;
     const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
@@ -1457,26 +1479,92 @@ function drawPseudocolorScatterCell(targetCtx, cellArea, sample, popFilter) {
         if(axis.xScale === 'log' && vx <= 0) continue;
         if(axis.yScale === 'log' && vy <= 0) continue;
         if(!popFilter(sample, k)) continue;
-        const px = x + xs.fwd(vx);
-        const py = y + h - ys.fwd(vy);
-        if(px < x || px > x + w || py < y || py > y + h) continue;
-        const col = Math.min(cols - 1, Math.max(0, Math.floor((px - x) / binSize)));
-        const row = Math.min(rows - 1, Math.max(0, Math.floor((py - y) / binSize)));
+        const fx = xs.fwd(vx), fy = h - ys.fwd(vy);
+        if(fx < 0 || fx > w || fy < 0 || fy > h) continue;
+        const col = Math.min(cols - 1, Math.max(0, Math.floor(fx / binSize)));
+        const row = Math.min(rows - 1, Math.max(0, Math.floor(fy / binSize)));
         const next = ++bins[row * cols + col];
         if (next > maxCount) maxCount = next;
     }
     if (!maxCount) return;
+
+    offscreenDensityCanvas.width = cols;
+    offscreenDensityCanvas.height = rows;
+    const offCtx = offscreenDensityCanvas.getContext('2d');
+    const imgData = offCtx.createImageData(cols, rows);
+    const data = imgData.data;
+    const lut = getPaletteLUT(plotStyle.scatterGridPalette);
+    const denom = Math.log1p(maxCount);
+    for (let i = 0; i < bins.length; i++) {
+        const count = bins[i];
+        if (!count) continue;
+        const t = Math.log1p(count) / denom;
+        const lutIdx = Math.floor(t * 255);
+        const dIdx = i * 4;
+        const lIdx = lutIdx * 4;
+        data[dIdx] = lut[lIdx]; data[dIdx + 1] = lut[lIdx + 1]; data[dIdx + 2] = lut[lIdx + 2]; data[dIdx + 3] = 255;
+    }
+    offCtx.putImageData(imgData, 0, 0);
     targetCtx.save();
     targetCtx.globalAlpha = scatterOpacity();
-    const denom = Math.log1p(maxCount);
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-            const count = bins[row * cols + col];
-            if (!count) continue;
-            targetCtx.fillStyle = paletteColor(plotStyle.scatterGridPalette, Math.log1p(count) / denom);
-            targetCtx.fillRect(x + col * binSize, y + row * binSize, binSize + 0.5, binSize + 0.5);
+    targetCtx.imageSmoothingEnabled = false;
+    targetCtx.drawImage(offscreenDensityCanvas, x, y, w, h);
+    targetCtx.restore();
+}
+
+function drawPseudocolorScatterOverlay(targetCtx, area, popFilter) {
+    const {x, y, w, h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const binSize = 2;
+    const cols = Math.max(1, Math.ceil(w / binSize));
+    const rows = Math.max(1, Math.ceil(h / binSize));
+    const bins = new Uint32Array(cols * rows);
+    let maxCount = 0;
+
+    visibleSamples().forEach(sample => {
+        const ix = sample.params.indexOf(axis.xParam), iy = sample.params.indexOf(axis.yParam);
+        if (ix < 0 || iy < 0) return;
+        const ax = sample.data[ix], ay = sample.data[iy];
+        const N = sample.n;
+        const stride = N > 500000 ? Math.ceil(N / 500000) : 1;
+        for (let k = 0; k < N; k += stride) {
+            const vx = ax[k], vy = ay[k];
+            if(axis.xScale === 'log' && vx <= 0) continue;
+            if(axis.yScale === 'log' && vy <= 0) continue;
+            if(!popFilter(sample, k)) continue;
+            const fx = xs.fwd(vx), fy = h - ys.fwd(vy);
+            if(fx < 0 || fx > w || fy < 0 || fy > h) continue;
+            const col = Math.min(cols - 1, Math.max(0, Math.floor(fx / binSize)));
+            const row = Math.min(rows - 1, Math.max(0, Math.floor(fy / binSize)));
+            const next = ++bins[row * cols + col];
+            if (next > maxCount) maxCount = next;
         }
+    });
+
+    if (!maxCount) return;
+
+    offscreenDensityCanvas.width = cols;
+    offscreenDensityCanvas.height = rows;
+    const offCtx = offscreenDensityCanvas.getContext('2d');
+    const imgData = offCtx.createImageData(cols, rows);
+    const data = imgData.data;
+    const lut = getPaletteLUT(plotStyle.scatterGridPalette);
+    const denom = Math.log1p(maxCount);
+    for (let i = 0; i < bins.length; i++) {
+        const count = bins[i];
+        if (!count) continue;
+        const t = Math.log1p(count) / denom;
+        const lutIdx = Math.floor(t * 255);
+        const dIdx = i * 4;
+        const lIdx = lutIdx * 4;
+        data[dIdx] = lut[lIdx]; data[dIdx + 1] = lut[lIdx + 1]; data[dIdx + 2] = lut[lIdx + 2]; data[dIdx + 3] = 255;
     }
+    offCtx.putImageData(imgData, 0, 0);
+    targetCtx.save();
+    targetCtx.globalAlpha = scatterOpacity();
+    targetCtx.imageSmoothingEnabled = false;
+    targetCtx.drawImage(offscreenDensityCanvas, x, y, w, h);
     targetCtx.restore();
 }
 
@@ -1513,7 +1601,10 @@ function drawScatterPlot(targetCtx, isExport, exportOptions, width, height){
     const ys=makeScaler(axis.yMin,axis.yMax,axis.yScale,h);
     const popFilter = makePopulationFilter(currentPopulationId);
 
-    visibleSamples().forEach(s=>{
+    if (plotStyle.scatterGridPseudocolor) {
+        drawPseudocolorScatterOverlay(targetCtx, area, popFilter);
+    } else {
+        visibleSamples().forEach(s=>{
       const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam);
       if (ix<0 || iy<0) return;
       const ax=s.data[ix], ay=s.data[iy];
@@ -1530,6 +1621,7 @@ function drawScatterPlot(targetCtx, isExport, exportOptions, width, height){
       }
       targetCtx.fill();
     });
+    }
     if (!isExport || (isExport && exportOptions.showGates)) drawGates(targetCtx, width, height, isExport, exportOptions);
     drawPlotBorder(targetCtx, area);
 }
@@ -3110,12 +3202,12 @@ function updatePlotStyleValueLabels() {
 function configurePlotStyleMenu(mode) {
     activePlotStyleMode = mode;
     const isHist = mode === 'hist';
-    const isScatterGrid = mode === 'scatter-grid';
+    const isScatter = mode === 'scatter' || mode === 'scatter-grid';
     ui.plotStyleTitle.textContent = isHist ? 'Histogram Style' : 'Dot Plot Style';
     ui.plotStylePrimaryLabel.textContent = isHist ? 'Line width' : 'Dot size';
     ui.plotStyleSecondaryLabel.textContent = isHist ? 'Fill opacity' : 'Dot opacity';
-    ui.plotStylePseudocolorRow.style.display = isScatterGrid ? 'flex' : 'none';
-    ui.plotStylePaletteRow.style.display = isScatterGrid ? 'block' : 'none';
+    ui.plotStylePseudocolorRow.style.display = isScatter ? 'flex' : 'none';
+    ui.plotStylePaletteRow.style.display = isScatter ? 'block' : 'none';
     ui.plotStylePseudocolor.checked = !!plotStyle.scatterGridPseudocolor;
     ui.plotStylePalette.value = plotStyle.scatterGridPalette || 'viridis';
     if (isHist) {
@@ -3513,6 +3605,9 @@ function drawScatterPlotPDF(pdf, area, options){
     const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
     const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
     const popFilter = makePopulationFilter(currentPopulationId);
+    if (plotStyle.scatterGridPseudocolor) {
+        drawPseudocolorScatterOverlayPDF(pdf, area, popFilter);
+    } else {
     visibleSamples().forEach(s => {
         const ix = s.params.indexOf(axis.xParam), iy = s.params.indexOf(axis.yParam); if (ix < 0 || iy < 0) return;
         const ax = s.data[ix], ay = s.data[iy];
@@ -3528,6 +3623,7 @@ function drawScatterPlotPDF(pdf, area, options){
         }
         pdf.setGState(new pdf.GState({opacity: 1.0}));
     });
+    }
 }
 function drawPseudocolorScatterCellPDF(pdf, cellArea, sample, popFilter) {
     const {x, y, w, h} = cellArea;
@@ -3556,13 +3652,67 @@ function drawPseudocolorScatterCellPDF(pdf, cellArea, sample, popFilter) {
     }
     if (!maxCount) return;
     const denom = Math.log1p(maxCount);
+    const stops = PRECOMPUTED_DENSITY_PALETTES[plotStyle.scatterGridPalette] || PRECOMPUTED_DENSITY_PALETTES.viridis;
     pdf.setGState(new pdf.GState({opacity: scatterOpacity()}));
     for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
             const count = bins[row * cols + col];
             if (!count) continue;
-            const c = hexToRgb(paletteColor(plotStyle.scatterGridPalette, Math.log1p(count) / denom));
-            pdf.setFillColor(c.r, c.g, c.b);
+            const t = Math.log1p(count) / denom;
+            const scaled = t * (stops.length - 1);
+            const idx = Math.min(stops.length - 2, Math.floor(scaled));
+            const local = scaled - idx;
+            const a = stops[idx], b = stops[idx + 1];
+            pdf.setFillColor(lerp(a.r, b.r, local), lerp(a.g, b.g, local), lerp(a.b, b.b, local));
+            pdf.rect(x + col * binSize, y + row * binSize, binSize + 0.5, binSize + 0.5, 'F');
+        }
+    }
+    pdf.setGState(new pdf.GState({opacity: 1}));
+}
+
+function drawPseudocolorScatterOverlayPDF(pdf, area, popFilter) {
+    const {x, y, w, h} = area;
+    const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
+    const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
+    const binSize = 2;
+    const cols = Math.max(1, Math.ceil(w / binSize));
+    const rows = Math.max(1, Math.ceil(h / binSize));
+    const bins = new Uint32Array(cols * rows);
+    let maxCount = 0;
+
+    visibleSamples().forEach(sample => {
+        const ix = sample.params.indexOf(axis.xParam), iy = sample.params.indexOf(axis.yParam);
+        if (ix < 0 || iy < 0) return;
+        const ax = sample.data[ix], ay = sample.data[iy];
+        for (let k = 0; k < sample.n; k++) {
+            const vx = ax[k], vy = ay[k];
+            if(axis.xScale === 'log' && vx <= 0) continue;
+            if(axis.yScale === 'log' && vy <= 0) continue;
+            if(!popFilter(sample, k)) continue;
+            const px = x + xs.fwd(vx);
+            const py = y + h - ys.fwd(vy);
+            if(px < x || px > x + w || py < y || py > y + h) continue;
+            const col = Math.min(cols - 1, Math.max(0, Math.floor((px - x) / binSize)));
+            const row = Math.min(rows - 1, Math.max(0, Math.floor((py - y) / binSize)));
+            const next = ++bins[row * cols + col];
+            if (next > maxCount) maxCount = next;
+        }
+    });
+
+    if (!maxCount) return;
+    const denom = Math.log1p(maxCount);
+    const stops = PRECOMPUTED_DENSITY_PALETTES[plotStyle.scatterGridPalette] || PRECOMPUTED_DENSITY_PALETTES.viridis;
+    pdf.setGState(new pdf.GState({opacity: scatterOpacity()}));
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const count = bins[row * cols + col];
+            if (!count) continue;
+            const t = Math.log1p(count) / denom;
+            const scaled = t * (stops.length - 1);
+            const idx = Math.min(stops.length - 2, Math.floor(scaled));
+            const local = scaled - idx;
+            const a = stops[idx], b = stops[idx + 1];
+            pdf.setFillColor(lerp(a.r, b.r, local), lerp(a.g, b.g, local), lerp(a.b, b.b, local));
             pdf.rect(x + col * binSize, y + row * binSize, binSize + 0.5, binSize + 0.5, 'F');
         }
     }
