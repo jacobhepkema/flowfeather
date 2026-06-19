@@ -912,6 +912,7 @@ function setAxisFromUI(){
   axis.xMin = n(ui.xMin.value); axis.xMax = n(ui.xMax.value);
   axis.yMin = n(ui.yMin.value); axis.yMax = n(ui.yMax.value);
   updateAxisLabels();
+  updateGateViewMetadata();
 }
 
 function updateAxisLabels(){
@@ -2581,6 +2582,26 @@ function focusGate(gateId) {
     rebuildGateTree();
     render();
 }
+function updateGateViewMetadata() {
+    gates.forEach(g => {
+        // If the gate is currently focused or is a child of the current population,
+        // and its axis parameters match the current view, update its stored metadata.
+        const isFocused = g.id === editingGate.id;
+        const isChildOfCurrent = (g.parentId || null) === (currentPopulationId || null);
+        const axesMatch = g.xParam === axis.xParam && (isSegmentGate(g) || g.yParam === axis.yParam);
+
+        if ((isFocused || isChildOfCurrent) && axesMatch) {
+            g.xScale = axis.xScale;
+            g.yScale = axis.yScale;
+            g.xMin = axis.xMin;
+            g.xMax = axis.xMax;
+            g.yMin = axis.yMin;
+            g.yMax = axis.yMax;
+            g.plotType = ui.plotType.value;
+        }
+    });
+}
+
 function restoreViewFromGate(g) {
     if (!g) return;
     if (g.xParam) ui.xParam.value = g.xParam;
@@ -3028,6 +3049,7 @@ ui.swapAxes.addEventListener('click', () => {
     ui[id].addEventListener('change', (e)=>{
         updateUIVisibility();
         setAxisFromUI();
+        updateGateViewMetadata();
         markGatePercentDirty();
         render();
     });
