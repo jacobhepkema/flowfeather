@@ -2574,6 +2574,7 @@ function hitGateAtCanvasPoint(px, py) {
     return gates.slice().reverse().find(g => gateVisibleForCurrentAxes(g, sampleId) && pointInGate(g, data.x, data.y)) || null;
 }
 ui.plot.addEventListener('mousedown', (e)=>{
+  if (e.button !== 0) return;
   const rect = ui.plot.getBoundingClientRect(); const px = e.clientX-rect.left, py=e.clientY-rect.top;
   const pointerCtx = pointerPlotContext(px, py);
   const activeArea = pointerCtx?.area || plotArea();
@@ -2768,6 +2769,34 @@ ui.plot.addEventListener('dblclick', (e)=>{
 
 ui.plot.addEventListener('contextmenu', (e)=>{
   const rect = ui.plot.getBoundingClientRect(); const px = e.clientX-rect.left, py=e.clientY-rect.top;
+
+  if (drawState && drawState.type === 'poly') {
+    e.preventDefault();
+    drawState.pts.pop();
+    render();
+    return;
+  }
+
+  if (editingGate.id) {
+    const g = gates.find(g => g.id === editingGate.id);
+    if (g && g.type === 'poly') {
+      const pointerCtx = pointerPlotContext(px, py);
+      const activeArea = pointerCtx?.area || plotArea();
+      const handles = getGateHandleLayouts(g, activeArea);
+      for (const handle of handles) {
+        if (Math.hypot(px - handle.px, py - handle.py) < 9) {
+          e.preventDefault();
+          if (g.def.pts.length > 3) {
+            g.def.pts.splice(handle.index, 1);
+            markGatePercentDirty();
+            render();
+          }
+          return;
+        }
+      }
+    }
+  }
+
   const g = hitGateAtCanvasPoint(px, py);
   e.preventDefault();
   if (g) {
@@ -2936,7 +2965,14 @@ function finalizeEllipse(){
 }
 
 function finalizePoly(){
-  const pts = (drawState?.pts||[]).slice(); if(pts.length<3){ drawState=null; render(); return; }
+  let pts = (drawState?.pts||[]).slice();
+  while (pts.length > 1) {
+    const last = pts[pts.length - 1];
+    const prev = pts[pts.length - 2];
+    if (last.x === prev.x && last.y === prev.y) pts.pop();
+    else break;
+  }
+  if(pts.length<3){ drawState=null; render(); return; }
   const sampleId = drawState.sampleId || null;
   const g = {id:idGen(), name:`Gate ${gates.length+1}`, type:'poly', sampleId, parentId: parentIdForNewGate(sampleId), def:{pts}, xParam: axis.xParam, yParam: axis.yParam, xScale: axis.xScale, yScale: axis.yScale};
   gates.push(g); drawState=null; 
