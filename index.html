@@ -2107,7 +2107,7 @@ function gateVisibleForCurrentAxes(g, sampleId = null) {
     const isHist = ui.plotType.value.startsWith('hist');
     if (g.xParam !== axis.xParam) return false;
     if (!isHist && g.yParam !== axis.yParam) return false;
-    if ((g.parentId || null) !== (currentPopulationId || null)) return false;
+    if (g.id !== editingGate.id && (g.parentId || null) !== (currentPopulationId || null)) return false;
     if (!gateSampleIsVisible(g)) return false;
     if (sampleId && !gateAppliesToSample(g, sampleId)) return false;
     return true;
@@ -2404,7 +2404,7 @@ function pointInGate(g, xval, yval){
 function pnpoly(pts, x, y){ let inside=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++) { const xi=pts[i].x, yi=pts[i].y, xj=pts[j].x, yj=pts[j].y; const intersect=((yi>y)!=(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi + 1e-12)+xi); if(intersect) inside=!inside; } return inside; }
 
 function updateStats(){
-  const targetGateId = currentPopulationId;
+  const targetGateId = editingGate.id || currentPopulationId;
   const targetGate = targetGateId ? gates.find(g => g.id === targetGateId) : null;
   const targetSampleId = targetGate ? gateEffectiveSampleId(targetGate) : null;
   const filt = makePopulationFilter(targetGateId);
@@ -2482,7 +2482,7 @@ function rebuildGateTree(){
   }
   function rowFor(g, depth, lineage){
     const row = document.createElement('div'); row.className='gateItem';
-    row.classList.toggle('is-current', currentPopulationId === g.id);
+    row.classList.toggle('is-current', g.id === editingGate.id || g.id === currentPopulationId);
     const branch = document.createElement('span');
     branch.className = 'gateBranch';
     branch.textContent = branchText(lineage);
@@ -2515,6 +2515,10 @@ function rebuildGateTree(){
     del.setAttribute('aria-label', `Delete ${g.name}`);
     del.textContent = '✕';
     del.addEventListener('click', (e) => { e.stopPropagation(); removeGateAndChildren(g.id); });
+    row.addEventListener('click', (e) => {
+        if (e.target === del || e.target.classList.contains('gateName')) return;
+        focusGate(g.id);
+    });
     row.addEventListener('dblclick', (e) => {
         if (e.target === del) return;
         selectGatePopulation(g.id);
@@ -2565,13 +2569,20 @@ function removeGateAndChildren(gateId) {
     rebuildGateTree();
     render();
 }
-function selectGatePopulation(gateId) {
+
+function focusGate(gateId) {
     const g = gates.find(g => g.id === gateId);
     if (!g) return;
-    currentPopulationId = gateId;
-    ui.population.value = gateId;
     editingGate.id = gateId;
+    currentPopulationId = g.parentId || null;
+    ui.population.value = currentPopulationId || 'ALL';
 
+    restoreViewFromGate(g);
+    rebuildGateTree();
+    render();
+}
+function restoreViewFromGate(g) {
+    if (!g) return;
     if (g.xParam) ui.xParam.value = g.xParam;
     if (g.yParam) ui.yParam.value = g.yParam;
     if (g.xScale) ui.xScale.value = g.xScale;
@@ -2584,6 +2595,16 @@ function selectGatePopulation(gateId) {
 
     updateUIVisibility();
     setAxisFromUI();
+}
+
+function selectGatePopulation(gateId) {
+    const g = gates.find(g => g.id === gateId);
+    if (!g) return;
+    currentPopulationId = gateId;
+    ui.population.value = gateId;
+    editingGate.id = gateId;
+
+    restoreViewFromGate(g);
     rebuildGateTree();
     render();
 }
@@ -3061,6 +3082,7 @@ ui.resetView.addEventListener('click', () => {
     render();
 });
 ui.population.addEventListener('change', ()=>{
+    editingGate.id = null;
     if (ui.population.value === 'ALL') {
         currentPopulationId = null;
         rebuildGateTree();
