@@ -985,7 +985,11 @@ function autoRangesFromData(){
     const isLog = !pName.includes('FSC') && !pName.includes('SSC');
     ui.xScale.value = isLog ? 'log' : 'linear';
     const [xmin, xmax] = axisDomain(axis.xParam, ui.xScale.value);
-    ui.xMin.value = xmin; ui.xMax.value = xmax;
+    ui.xMin.value = xmin;
+
+    let maxR = 0;
+    samples.forEach(s => { if (visibleSampleIds.has(s.id) && s.pMeta && s.pMeta[axis.xParam]) maxR = Math.max(maxR, s.pMeta[axis.xParam].range || 0); });
+    ui.xMax.value = (maxR > 0 && maxR > xmax * 0.5) ? maxR : xmax;
   }
   
   const is2d = ui.plotType.value.startsWith('scatter');
@@ -1000,7 +1004,11 @@ function autoRangesFromData(){
       const isLog = !pName.includes('FSC') && !pName.includes('SSC');
       ui.yScale.value = isLog ? 'log' : 'linear';
       const [ymin, ymax] = axisDomain(axis.yParam, ui.yScale.value);
-      ui.yMin.value = ymin; ui.yMax.value = ymax;
+      ui.yMin.value = ymin;
+
+      let maxR = 0;
+      samples.forEach(s => { if (visibleSampleIds.has(s.id) && s.pMeta && s.pMeta[axis.yParam]) maxR = Math.max(maxR, s.pMeta[axis.yParam].range || 0); });
+      ui.yMax.value = (maxR > 0 && maxR > ymax * 0.5) ? maxR : ymax;
     }
   }
   setAxisFromUI();
@@ -4328,13 +4336,22 @@ async function parseFCS(buffer, name){
   const tot = +meta["$TOT"];
   const dtype = (meta["$DATATYPE"] || "F").trim().toUpperCase();
   const mode = (meta["$MODE"] || "L").trim().toUpperCase();
-  const byteord = (meta["$BYTEORD"] || "4,3,2,1").trim();
-  const little = byteord === '1,2,3,4';
+  const byteord = (meta["$BYTEORD"] || "4,3,2,1").trim().replace(/\s/g, '');
+  const little = byteord === '1,2,3,4' || byteord === '1,2';
   const dStart = meta["$BEGINDATA"] ? parseInt(meta["$BEGINDATA"]) : hDataStart;
   const dEnd = meta["$ENDDATA"] ? parseInt(meta["$ENDDATA"]) : hDataEnd;
   if(!(Number.isFinite(dStart) && Number.isFinite(dEnd) && dEnd > dStart)) { throw new Error("Invalid data offsets"); }
   const params = [];
-  for (let i=1;i<=par;i++){ params.push( (meta[`$P${i}S`] || meta[`$P${i}N`] || `P${i}`).toString() ); }
+  const pMeta = {};
+  for (let i=1;i<=par;i++){
+    const name = (meta[`$P${i}S`] || meta[`$P${i}N`] || `P${i}`).toString();
+    params.push(name);
+    pMeta[name] = {
+      range: parseFloat(meta[`$P${i}R`]),
+      gain: parseFloat(meta[`$P${i}G`] || '1'),
+      log: (meta[`$P${i}E`] || '0,0').split(',').map(parseFloat)
+    };
+  }
   const view = new DataView(buffer, dStart, dEnd - dStart + 1);
   const arrays = Array.from({length:par}, ()=> new Float32Array(tot));
   const bytesPer = [];
@@ -4371,7 +4388,7 @@ async function parseFCS(buffer, name){
       base += step * tot;
     }
   } else { throw new Error("Unsupported $MODE " + mode); }
-  return { name, params, data: arrays, n: tot };
+  return { name, params, data: arrays, n: tot, pMeta };
 }
 
 function parseText(txt){
