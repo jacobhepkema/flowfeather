@@ -287,6 +287,11 @@
       <input id="plotStyleSecondary" type="range" />
       <span id="plotStyleSecondaryValue" class="styleValue"></span>
     </div>
+    <div id="plotStyleTertiaryRow" class="styleControl">
+      <label id="plotStyleTertiaryLabel" for="plotStyleTertiary"></label>
+      <input id="plotStyleTertiary" type="range" />
+      <span id="plotStyleTertiaryValue" class="styleValue"></span>
+    </div>
     <div id="plotStylePseudocolorRow" class="styleToggle">
       <input id="plotStylePseudocolor" type="checkbox" />
       <label for="plotStylePseudocolor">Pseudocolor density</label>
@@ -543,6 +548,7 @@ const ui = {
   plotStyleMenu: byId('plotStyleMenu'), plotStyleTitle: byId('plotStyleTitle'), plotStyleClose: byId('plotStyleClose'), plotStyleReset: byId('plotStyleReset'),
   plotStylePrimary: byId('plotStylePrimary'), plotStylePrimaryLabel: byId('plotStylePrimaryLabel'), plotStylePrimaryValue: byId('plotStylePrimaryValue'),
   plotStyleSecondary: byId('plotStyleSecondary'), plotStyleSecondaryLabel: byId('plotStyleSecondaryLabel'), plotStyleSecondaryValue: byId('plotStyleSecondaryValue'),
+  plotStyleTertiaryRow: byId('plotStyleTertiaryRow'), plotStyleTertiary: byId('plotStyleTertiary'), plotStyleTertiaryLabel: byId('plotStyleTertiaryLabel'), plotStyleTertiaryValue: byId('plotStyleTertiaryValue'),
   plotStylePseudocolorRow: byId('plotStylePseudocolorRow'), plotStylePseudocolor: byId('plotStylePseudocolor'),
   plotStylePaletteRow: byId('plotStylePaletteRow'), plotStylePalette: byId('plotStylePalette'),
 };
@@ -570,7 +576,7 @@ let labelDragSampleId = null;
 let gateDragState = null;
 let activeAxisPopover = null;
 let activePlotStyleMode = null;
-let plotStyle = { scatterDotSize: 1.5, scatterOpacity: 0.65, histLineWidth: 1.5, histFillOpacity: null, scatterGridPseudocolor: false, scatterGridPalette: 'viridis' };
+let plotStyle = { scatterDotSize: 1.5, scatterOpacity: 0.65, histLineWidth: 1.5, histFillOpacity: null, scatterGridPseudocolor: false, scatterGridPalette: 'viridis', densityBinSize: 2, histBinCount: 200 };
 const EXAMPLE_DATA_FILES = [
     'example_data/03-Well-B1.fcs',
     'example_data/03-Well-B2.fcs',
@@ -1478,7 +1484,7 @@ function drawPseudocolorScatterCell(targetCtx, cellArea, sample, popFilter) {
     const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
     const ix = sample.params.indexOf(axis.xParam), iy = sample.params.indexOf(axis.yParam);
     if (ix < 0 || iy < 0) return;
-    const binSize = 2;
+    const binSize = plotStyle.densityBinSize;
     const cols = Math.max(1, Math.ceil(w / binSize));
     const rows = Math.max(1, Math.ceil(h / binSize));
     const bins = new Uint32Array(cols * rows);
@@ -1526,7 +1532,7 @@ function drawPseudocolorScatterOverlay(targetCtx, area, popFilter) {
     const {x, y, w, h} = area;
     const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
     const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
-    const binSize = 2;
+    const binSize = plotStyle.densityBinSize;
     const cols = Math.max(1, Math.ceil(w / binSize));
     const rows = Math.max(1, Math.ceil(h / binSize));
     const bins = new Uint32Array(cols * rows);
@@ -1778,7 +1784,7 @@ function drawHistPlot(targetCtx, isExport, isOffset, exportOptions, width, heigh
           let data = Array.from(s.data[i]).filter((_, k) => popFilter(s, k));
           if (data.length === 0) return;
           
-          const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, 200);
+          const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, plotStyle.histBinCount);
           let maxDensity = 0;
           for(const p of densityPoints) if(p.y > maxDensity) maxDensity = p.y;
           if (maxDensity === 0) return;
@@ -1830,7 +1836,7 @@ function drawHistPlot(targetCtx, isExport, isOffset, exportOptions, width, heigh
           const i = s.params.indexOf(axis.xParam); if(i<0) return;
           const data = s.data[i].filter((_, k) => popFilter(s, k));
           if (data.length === 0) return;
-          const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, 200);
+          const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, plotStyle.histBinCount);
           let maxDensity = 0;
           for(const p of densityPoints) if(p.y > maxDensity) maxDensity = p.y;
           if(maxDensity > globalMaxDensity) globalMaxDensity = maxDensity;
@@ -3306,11 +3312,13 @@ function setRangeConfig(input, {min, max, step, value}) {
     input.value = String(value);
 }
 function updatePlotStyleValueLabels() {
+    const isDensity = (activePlotStyleMode === 'scatter' || activePlotStyleMode === 'scatter-grid') && plotStyle.scatterGridPseudocolor;
     if (activePlotStyleMode === 'hist') {
         ui.plotStylePrimaryValue.textContent = formatStyleValue(ui.plotStylePrimary.value, ' px');
         ui.plotStyleSecondaryValue.textContent = formatStyleValue(Number(ui.plotStyleSecondary.value) * 100, '%');
+        ui.plotStyleTertiaryValue.textContent = formatStyleValue(ui.plotStyleTertiary.value);
     } else {
-        ui.plotStylePrimaryValue.textContent = formatStyleValue(ui.plotStylePrimary.value, ' px');
+        ui.plotStylePrimaryValue.textContent = formatStyleValue(ui.plotStylePrimary.value, isDensity ? '' : ' px');
         ui.plotStyleSecondaryValue.textContent = formatStyleValue(Number(ui.plotStyleSecondary.value) * 100, '%');
     }
 }
@@ -3318,18 +3326,28 @@ function configurePlotStyleMenu(mode) {
     activePlotStyleMode = mode;
     const isHist = mode === 'hist';
     const isScatter = mode === 'scatter' || mode === 'scatter-grid';
+    const isDensity = isScatter && plotStyle.scatterGridPseudocolor;
+
     ui.plotStyleTitle.textContent = isHist ? 'Histogram Style' : 'Dot Plot Style';
-    ui.plotStylePrimaryLabel.textContent = isHist ? 'Line width' : 'Dot size';
+    ui.plotStylePrimaryLabel.textContent = isHist ? 'Line width' : (isDensity ? 'Bin width' : 'Dot size');
     ui.plotStyleSecondaryLabel.textContent = isHist ? 'Fill opacity' : 'Dot opacity';
     ui.plotStylePseudocolorRow.style.display = isScatter ? 'flex' : 'none';
     ui.plotStylePaletteRow.style.display = isScatter ? 'block' : 'none';
+    ui.plotStyleTertiaryRow.style.display = isHist ? 'grid' : 'none';
+
     ui.plotStylePseudocolor.checked = !!plotStyle.scatterGridPseudocolor;
     ui.plotStylePalette.value = plotStyle.scatterGridPalette || 'viridis';
     if (isHist) {
         setRangeConfig(ui.plotStylePrimary, {min: 0.5, max: 6, step: 0.25, value: histLineWidth()});
         setRangeConfig(ui.plotStyleSecondary, {min: 0, max: 1, step: 0.05, value: histFillOpacity(ui.plotType.value === 'hist-offset')});
+        setRangeConfig(ui.plotStyleTertiary, {min: 20, max: 1000, step: 10, value: plotStyle.histBinCount});
+        ui.plotStyleTertiaryLabel.textContent = 'Bin count';
     } else {
-        setRangeConfig(ui.plotStylePrimary, {min: 0.25, max: 5, step: 0.25, value: scatterDotSize()});
+        if (isDensity) {
+            setRangeConfig(ui.plotStylePrimary, {min: 1, max: 20, step: 1, value: plotStyle.densityBinSize});
+        } else {
+            setRangeConfig(ui.plotStylePrimary, {min: 0.25, max: 5, step: 0.25, value: scatterDotSize()});
+        }
         setRangeConfig(ui.plotStyleSecondary, {min: 0.05, max: 1, step: 0.05, value: scatterOpacity()});
     }
     updatePlotStyleValueLabels();
@@ -3338,8 +3356,13 @@ function applyPlotStyleControl() {
     if (activePlotStyleMode === 'hist') {
         plotStyle.histLineWidth = clampNumber(ui.plotStylePrimary.value, 0.5, 6, 1.5);
         plotStyle.histFillOpacity = clampNumber(ui.plotStyleSecondary.value, 0, 1, histFillOpacity(ui.plotType.value === 'hist-offset'));
+        plotStyle.histBinCount = clampNumber(ui.plotStyleTertiary.value, 20, 1000, 200);
     } else if (activePlotStyleMode === 'scatter' || activePlotStyleMode === 'scatter-grid') {
-        plotStyle.scatterDotSize = clampNumber(ui.plotStylePrimary.value, 0.25, 5, 1.5);
+        if (plotStyle.scatterGridPseudocolor) {
+            plotStyle.densityBinSize = clampNumber(ui.plotStylePrimary.value, 1, 20, 2);
+        } else {
+            plotStyle.scatterDotSize = clampNumber(ui.plotStylePrimary.value, 0.25, 5, 1.5);
+        }
         plotStyle.scatterOpacity = clampNumber(ui.plotStyleSecondary.value, 0.05, 1, 0.65);
     }
     updatePlotStyleValueLabels();
@@ -3349,9 +3372,11 @@ function resetActivePlotStyle() {
     if (activePlotStyleMode === 'hist') {
         plotStyle.histLineWidth = 1.5;
         plotStyle.histFillOpacity = null;
+        plotStyle.histBinCount = 200;
     } else if (activePlotStyleMode === 'scatter' || activePlotStyleMode === 'scatter-grid') {
         plotStyle.scatterDotSize = 1.5;
         plotStyle.scatterOpacity = 0.65;
+        plotStyle.densityBinSize = 2;
         if (activePlotStyleMode === 'scatter-grid') {
             plotStyle.scatterGridPseudocolor = false;
             plotStyle.scatterGridPalette = 'viridis';
@@ -3431,8 +3456,10 @@ ui.plotStyleClose.addEventListener('click', closePlotStyleMenu);
 ui.plotStyleReset.addEventListener('click', resetActivePlotStyle);
 ui.plotStylePrimary.addEventListener('input', applyPlotStyleControl);
 ui.plotStyleSecondary.addEventListener('input', applyPlotStyleControl);
+ui.plotStyleTertiary.addEventListener('input', applyPlotStyleControl);
 ui.plotStylePseudocolor.addEventListener('change', () => {
     plotStyle.scatterGridPseudocolor = ui.plotStylePseudocolor.checked;
+    configurePlotStyleMenu(activePlotStyleMode);
     render();
 });
 ui.plotStylePalette.addEventListener('change', () => {
@@ -3746,7 +3773,7 @@ function drawPseudocolorScatterCellPDF(pdf, cellArea, sample, popFilter) {
     const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
     const ix = sample.params.indexOf(axis.xParam), iy = sample.params.indexOf(axis.yParam);
     if (ix < 0 || iy < 0) return;
-    const binSize = 2;
+    const binSize = plotStyle.densityBinSize;
     const cols = Math.max(1, Math.ceil(w / binSize));
     const rows = Math.max(1, Math.ceil(h / binSize));
     const bins = new Uint32Array(cols * rows);
@@ -3789,7 +3816,7 @@ function drawPseudocolorScatterOverlayPDF(pdf, area, popFilter) {
     const {x, y, w, h} = area;
     const xs = makeScaler(axis.xMin, axis.xMax, axis.xScale, w);
     const ys = makeScaler(axis.yMin, axis.yMax, axis.yScale, h);
-    const binSize = 2;
+    const binSize = plotStyle.densityBinSize;
     const cols = Math.max(1, Math.ceil(w / binSize));
     const rows = Math.max(1, Math.ceil(h / binSize));
     const bins = new Uint32Array(cols * rows);
@@ -3894,7 +3921,7 @@ function drawAllHistPlotPDF(pdf, area, isLightMode, isOffset, options) {
             const i = s.params.indexOf(axis.xParam); if(i<0) return;
             let data = Array.from(s.data[i]).filter((_, k) => popFilter(s, k));
             if (data.length === 0) return;
-            const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, 200);
+            const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, plotStyle.histBinCount);
             let maxDensity = Math.max(...densityPoints.map(p=>p.y));
             if (maxDensity === 0) return;
             
@@ -3937,7 +3964,7 @@ function drawAllHistPlotPDF(pdf, area, isLightMode, isOffset, options) {
             const i = s.params.indexOf(axis.xParam); if(i<0) return;
             const data = s.data[i].filter((_, k) => popFilter(s, k));
             if (data.length === 0) return;
-            const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, 200);
+            const densityPoints = calculateHistogram(data, axis.xMin, axis.xMax, axis.xScale, plotStyle.histBinCount);
             globalMaxDensity = Math.max(globalMaxDensity, ...densityPoints.map(p=>p.y));
             allDensityPoints.push({s, densityPoints});
         });
